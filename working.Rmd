@@ -1,0 +1,76 @@
+---
+title: "Project Proposal"
+output: pdf_document
+date: '2023-11-30'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(lubridate)
+
+
+data <- read_csv("data.csv")
+data <- subset(data, !(weight_class %in% c("CatchWeight", "WomenBantamweight", "WomenFeatherweight", "WomenFlyweight", "WomenStrawweight")))
+
+```
+
+```{r}
+data <- data %>% mutate(weight = case_when(weight_class == "Flyweight" ~ 125,
+                                   weight_class == "Bantamweight" ~ 135,
+                                   weight_class == "Featherweight" ~ 145,
+                                   weight_class == "Lightweight" ~ 155,
+                                   weight_class == "Welterweight" ~ 170,
+                                   weight_class == "Middleweight" ~ 185,
+                                   weight_class == "LightHeavyweight" ~ 205, 
+                                   weight_class == "Heavyweight" ~ 265, 
+                                   weight_class == "OpenWeight" ~ 300))
+
+data <- data %>% mutate(new_class = case_when(weight_class == "Flyweight" ~ "Class 1",
+                                   weight_class == "Bantamweight" ~ "Class 1",
+                                   weight_class == "Featherweight" ~ "Class 1",
+                                   weight_class == "Lightweight" ~ "Class 2",
+                                   weight_class == "Welterweight" ~ "Class 2",
+                                   weight_class == "Middleweight" ~ "Class 3",
+                                   weight_class == "LightHeavyweight" ~ "Class 3", 
+                                   weight_class == "Heavyweight" ~ "Class 4", 
+                                   weight_class == "OpenWeight" ~ "Class 4"))
+
+freq <- data %>% group_by(new_class, weight_class) %>% 
+  summarize(weight = median(weight),
+            count = n()) %>% arrange(weight)
+
+kable(freq, caption = "Frequency of Weight Class Fights")
+
+
+```
+
+
+
+
+```{r}
+new_class_freq <- data %>% group_by(new_class) %>% summarize(freq = n())
+
+ggplot(data=new_class_freq, aes(x=new_class, y=freq)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  theme_minimal() + labs(x = "New Class for Model Building", y = "Count", 
+                         title = "Frequency Distribution of New Weight Classes")
+```
+
+
+
+```{r}
+data$year <- year(data$date) 
+
+year_freq <- data %>% group_by(year) %>% summarize(count = n()) 
+
+ggplot(data = year_freq, mapping = aes(x = year, y = count)) + geom_line() + labs(x = "Year", y = "Number of Fights", title = "Trend of Number of Fights in the UFC")
+```
+
+
