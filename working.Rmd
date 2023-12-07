@@ -17,7 +17,12 @@ library(lubridate)
 
 
 data <- read_csv("data.csv")
+# Removing womens fights 
 data <- subset(data, !(weight_class %in% c("CatchWeight", "WomenBantamweight", "WomenFeatherweight", "WomenFlyweight", "WomenStrawweight")))
+# Filtering out fights where one compeitor has no prior data
+#data <- data %>% filter(R_total_rounds_fought != 0 | B_total_rounds_fought != 0)
+
+
 
 ```
 
@@ -66,7 +71,11 @@ ggplot(data=new_class_freq, aes(x=new_class, y=freq)) +
 
 
 ```{r}
-data$year <- year(data$date) 
+data$date <- as.Date(data$date, format = "%m/%d/%y")
+
+# Extract year from the Date column
+data$year <- as.numeric(format(data$date, "%Y"))
+
 
 year_freq <- data %>% group_by(year) %>% summarize(count = n()) 
 
@@ -140,6 +149,34 @@ data_differences <- data %>% mutate(
   Height_cms_diff = R_Height_cms - B_Height_cms, 
   Reach_cms_diff = R_Reach_cms - B_Reach_cms, 
   Weight_lbs_diff = R_Weight_lbs - B_Weight_lbs)
+```
+
+
+```{r}
+# Distribution of number of rounds fought, or a measure experience between the two fighters
+ggplot(data = data_differences, mapping = aes(x = total_rounds_fought_diff)) + geom_histogram(binwidth = 5, color = "black", fill = "steelblue") + labs(x = "Total Rounds Fought in Career", title = "Normal Distribution of Difference in Total Rounds between Red and Blue Fighters")
+```
+
+
+```{r}
+# Distribution of title fight opportunities between each fighter classification
+ggplot(data = data_differences, mapping = aes(x = total_title_bouts_diff)) + geom_histogram(binwidth = 1, color = "black", fill = "steelblue") + labs(x = "Total Title Fights Fought in Career", title = "Normal Distribution of Difference in Total Title Fights between Red and 
+Blue Fighters")
+
+```
+Those with title fight experience are typically placed in the red corner.
+
+```{r}
+
+
+
+#Exploring potential interaction between stance and attacking attempts
+data_differences %>% group_by(R_Stance) %>% 
+  summarise(count = n(), mean_sig_shots_connected_pct = sum(R_avg_SIG_STR_landed, na.rm = TRUE)
+            /sum(R_avg_SIG_STR_att, na.rm = TRUE), 
+            mean_takedown_successes = sum(R_avg_TD_landed, na.rm = TRUE) / sum(R_avg_TD_att, na.rm = TRUE),
+            mean_headshots_successes = sum(R_avg_HEAD_landed, na.rm = TRUE) / sum(R_avg_HEAD_att, na.rm = TRUE))
+
 ```
 
 
