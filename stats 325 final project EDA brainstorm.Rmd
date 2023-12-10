@@ -1,0 +1,419 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+data <- read.csv("/Users/jacksonseo/Desktop/classes fall 2023/stats 325/final project/data (1).csv")
+```
+
+```{r}
+library(dplyr)
+data %>%
+  group_by(weight_class) %>%
+  summarise(count = n())
+```
+
+```{r}
+data <- data %>%
+  mutate(fight_gender = ifelse(weight_class %in% c("WomenBantamweight", "WomenFeatherweight", "WomenFlyweight",
+                                             "WomenStrawweight"), "women", "men"))
+
+library(ggplot2)
+ggplot(data = data, aes(x = fight_gender)) + geom_bar()
+
+ggplot(data = data, aes(x = Winner)) + geom_bar()
+```
+
+```{r}
+data <- data %>%
+  mutate(first_fight = ifelse(is.na(B_avg_KD) | is.na(R_avg_KD), "yes", "no"))
+
+ggplot(data = data, aes(x = first_fight)) + geom_bar()
+```
+
+```{r}
+data2 <- data %>%
+  filter(fight_gender == "men" & first_fight == "no")
+
+nrow(data2)
+```
+
+
+#randomizing blue and red
+```{r}
+data2 <- data2 %>%
+  mutate(Winner2 = ifelse(Winner == "Red", R_fighter, B_fighter))
+```
+
+```{r}
+library(dplyr)
+
+shuffle_fighters <- function(B_fighter, B_avg_KD, B_avg_opp_KD, B_avg_SIG_STR_pct, B_avg_opp_SIG_STR_pct,
+                             B_avg_TD_pct,B_avg_opp_TD_pct, B_avg_SUB_ATT, 
+                             B_avg_opp_SUB_ATT, B_avg_REV, B_avg_opp_REV, 
+                             B_avg_SIG_STR_att, B_avg_SIG_STR_landed, 
+                             B_avg_opp_SIG_STR_att,B_avg_opp_SIG_STR_landed, 
+                             B_avg_TOTAL_STR_att, B_avg_TOTAL_STR_landed,
+                             B_avg_opp_TOTAL_STR_att, B_avg_opp_TOTAL_STR_landed, 
+                             B_avg_TD_att, B_avg_TD_landed, B_avg_opp_TD_att, 
+                             B_avg_opp_TD_landed, B_avg_HEAD_att,
+                             B_avg_HEAD_landed, B_avg_opp_HEAD_att, 
+                             B_avg_opp_HEAD_landed, B_avg_BODY_att,
+                             B_avg_BODY_landed, B_avg_opp_BODY_att, 
+                             B_avg_opp_BODY_landed, B_avg_LEG_att, 
+                             B_avg_LEG_landed, B_avg_opp_LEG_att, 
+                             B_avg_opp_LEG_landed, B_avg_DISTANCE_att,
+                             B_avg_DISTANCE_landed, B_avg_opp_DISTANCE_att, 
+                             B_avg_opp_DISTANCE_landed,B_avg_CLINCH_att, 
+                             B_avg_CLINCH_landed, B_avg_opp_CLINCH_att, 
+                             B_avg_opp_CLINCH_landed, B_avg_GROUND_att, B_avg_GROUND_landed,
+                             B_avg_opp_GROUND_att, B_avg_opp_GROUND_landed, B_avg_CTRL_time.seconds.,
+                             B_avg_opp_CTRL_time.seconds., B_total_time_fought.seconds., 
+                             B_total_rounds_fought, B_total_title_bouts, B_current_win_streak, 
+                             B_current_lose_streak, B_longest_win_streak, B_wins, B_losses, B_draw,
+                             B_win_by_Decision_Majority, B_win_by_Decision_Split,
+                             B_win_by_Decision_Unanimous, B_win_by_KO.TKO, B_win_by_Submission,
+                             B_win_by_TKO_Doctor_Stoppage, B_Stance, B_Height_cms, B_Reach_cms, B_Weight_lbs,
+                             B_age, R_fighter, R_avg_KD, R_avg_opp_KD, R_avg_SIG_STR_pct, 
+                             R_avg_opp_SIG_STR_pct, R_avg_TD_pct, R_avg_opp_TD_pct, R_avg_SUB_ATT, 
+                             R_avg_opp_SUB_ATT, R_avg_REV, R_avg_opp_REV, R_avg_SIG_STR_att, 
+                             R_avg_SIG_STR_landed, R_avg_opp_SIG_STR_att,
+                             R_avg_opp_SIG_STR_landed, R_avg_TOTAL_STR_att, R_avg_TOTAL_STR_landed,
+                             R_avg_opp_TOTAL_STR_att, R_avg_opp_TOTAL_STR_landed, R_avg_TD_att,
+                             R_avg_TD_landed, R_avg_opp_TD_att, R_avg_opp_TD_landed, R_avg_HEAD_att,
+                             R_avg_HEAD_landed, R_avg_opp_HEAD_att, R_avg_opp_HEAD_landed, R_avg_BODY_att,
+                             R_avg_BODY_landed, R_avg_opp_BODY_att, R_avg_opp_BODY_landed, R_avg_LEG_att,
+                             R_avg_LEG_landed, R_avg_opp_LEG_att, R_avg_opp_LEG_landed, R_avg_DISTANCE_att,
+                             R_avg_DISTANCE_landed, R_avg_opp_DISTANCE_att, R_avg_opp_DISTANCE_landed,
+                             R_avg_CLINCH_att, R_avg_CLINCH_landed, R_avg_opp_CLINCH_att,
+                             R_avg_opp_CLINCH_landed, R_avg_GROUND_att, R_avg_GROUND_landed,
+                             R_avg_opp_GROUND_att, R_avg_opp_GROUND_landed, R_avg_CTRL_time.seconds.,
+                             R_avg_opp_CTRL_time.seconds., R_total_time_fought.seconds.,
+                             R_total_rounds_fought, R_total_title_bouts, R_current_win_streak,
+                             R_current_lose_streak, R_longest_win_streak, R_wins, R_losses, R_draw,
+                             R_win_by_Decision_Majority, R_win_by_Decision_Split,
+                             R_win_by_Decision_Unanimous, R_win_by_KO.TKO, R_win_by_Submission,
+                             R_win_by_TKO_Doctor_Stoppage, R_Stance, R_Height_cms, R_Reach_cms,
+                             R_Weight_lbs, R_age) {
+  if (runif(1) < 0.5) {
+    return(c(B_fighter, B_avg_KD, B_avg_opp_KD, 
+                             B_avg_SIG_STR_pct, B_avg_opp_SIG_STR_pct, 
+                             B_avg_TD_pct,B_avg_opp_TD_pct, B_avg_SUB_ATT, 
+                             B_avg_opp_SUB_ATT, B_avg_REV, B_avg_opp_REV, 
+                             B_avg_SIG_STR_att, B_avg_SIG_STR_landed, 
+                             B_avg_opp_SIG_STR_att,B_avg_opp_SIG_STR_landed, 
+                             B_avg_TOTAL_STR_att, B_avg_TOTAL_STR_landed,
+                             B_avg_opp_TOTAL_STR_att, B_avg_opp_TOTAL_STR_landed, 
+                             B_avg_TD_att, B_avg_TD_landed, B_avg_opp_TD_att, 
+                             B_avg_opp_TD_landed, B_avg_HEAD_att,
+                             B_avg_HEAD_landed, B_avg_opp_HEAD_att, 
+                             B_avg_opp_HEAD_landed, B_avg_BODY_att,
+                             B_avg_BODY_landed, B_avg_opp_BODY_att, 
+                             B_avg_opp_BODY_landed, B_avg_LEG_att, 
+                             B_avg_LEG_landed, B_avg_opp_LEG_att, 
+                             B_avg_opp_LEG_landed, B_avg_DISTANCE_att,
+                             B_avg_DISTANCE_landed, B_avg_opp_DISTANCE_att, 
+                             B_avg_opp_DISTANCE_landed,B_avg_CLINCH_att, 
+                             B_avg_CLINCH_landed, B_avg_opp_CLINCH_att, 
+                             B_avg_opp_CLINCH_landed, B_avg_GROUND_att, B_avg_GROUND_landed,
+                             B_avg_opp_GROUND_att, B_avg_opp_GROUND_landed, B_avg_CTRL_time.seconds.,
+                             B_avg_opp_CTRL_time.seconds., B_total_time_fought.seconds., 
+                             B_total_rounds_fought, B_total_title_bouts, B_current_win_streak, 
+                             B_current_lose_streak, B_longest_win_streak, B_wins, B_losses, B_draw,
+                             B_win_by_Decision_Majority, B_win_by_Decision_Split,
+                             B_win_by_Decision_Unanimous, B_win_by_KO.TKO, B_win_by_Submission,
+                             B_win_by_TKO_Doctor_Stoppage, B_Stance, B_Height_cms, B_Reach_cms, B_Weight_lbs,
+                             B_age, R_fighter, R_avg_KD, R_avg_opp_KD, R_avg_SIG_STR_pct, 
+                             R_avg_opp_SIG_STR_pct, R_avg_TD_pct, R_avg_opp_TD_pct, R_avg_SUB_ATT, 
+                             R_avg_opp_SUB_ATT, R_avg_REV, R_avg_opp_REV, R_avg_SIG_STR_att, 
+                             R_avg_SIG_STR_landed, R_avg_opp_SIG_STR_att,
+                             R_avg_opp_SIG_STR_landed, R_avg_TOTAL_STR_att, R_avg_TOTAL_STR_landed,
+                             R_avg_opp_TOTAL_STR_att, R_avg_opp_TOTAL_STR_landed, R_avg_TD_att,
+                             R_avg_TD_landed, R_avg_opp_TD_att, R_avg_opp_TD_landed, R_avg_HEAD_att,
+                             R_avg_HEAD_landed, R_avg_opp_HEAD_att, R_avg_opp_HEAD_landed, R_avg_BODY_att,
+                             R_avg_BODY_landed, R_avg_opp_BODY_att, R_avg_opp_BODY_landed, R_avg_LEG_att,
+                             R_avg_LEG_landed, R_avg_opp_LEG_att, R_avg_opp_LEG_landed, R_avg_DISTANCE_att,
+                             R_avg_DISTANCE_landed, R_avg_opp_DISTANCE_att, R_avg_opp_DISTANCE_landed,
+                             R_avg_CLINCH_att, R_avg_CLINCH_landed, R_avg_opp_CLINCH_att,
+                             R_avg_opp_CLINCH_landed, R_avg_GROUND_att, R_avg_GROUND_landed,
+                             R_avg_opp_GROUND_att, R_avg_opp_GROUND_landed, R_avg_CTRL_time.seconds.,
+                             R_avg_opp_CTRL_time.seconds., R_total_time_fought.seconds.,
+                             R_total_rounds_fought, R_total_title_bouts, R_current_win_streak,
+                             R_current_lose_streak, R_longest_win_streak, R_wins, R_losses, R_draw,
+                             R_win_by_Decision_Majority, R_win_by_Decision_Split,
+                             R_win_by_Decision_Unanimous, R_win_by_KO.TKO, R_win_by_Submission,
+                             R_win_by_TKO_Doctor_Stoppage, R_Stance, R_Height_cms, R_Reach_cms,
+                             R_Weight_lbs, R_age))
+  } else {
+    return(c(R_fighter, R_avg_KD, R_avg_opp_KD, 
+                             R_avg_SIG_STR_pct, R_avg_opp_SIG_STR_pct, 
+                             R_avg_TD_pct, R_avg_opp_TD_pct, R_avg_SUB_ATT, 
+                             R_avg_opp_SUB_ATT, R_avg_REV, R_avg_opp_REV, 
+                             R_avg_SIG_STR_att, R_avg_SIG_STR_landed, 
+                             R_avg_opp_SIG_STR_att, R_avg_opp_SIG_STR_landed, 
+                             R_avg_TOTAL_STR_att, R_avg_TOTAL_STR_landed,
+                             R_avg_opp_TOTAL_STR_att, R_avg_opp_TOTAL_STR_landed, 
+                             R_avg_TD_att, R_avg_TD_landed, R_avg_opp_TD_att, 
+                             R_avg_opp_TD_landed, R_avg_HEAD_att,
+                             R_avg_HEAD_landed, R_avg_opp_HEAD_att, 
+                             R_avg_opp_HEAD_landed, R_avg_BODY_att,
+                             R_avg_BODY_landed, R_avg_opp_BODY_att, 
+                             R_avg_opp_BODY_landed, R_avg_LEG_att, 
+                             R_avg_LEG_landed, R_avg_opp_LEG_att, 
+                             R_avg_opp_LEG_landed, R_avg_DISTANCE_att,
+                             R_avg_DISTANCE_landed, R_avg_opp_DISTANCE_att, 
+                             R_avg_opp_DISTANCE_landed, R_avg_CLINCH_att, 
+                             R_avg_CLINCH_landed, R_avg_opp_CLINCH_att, 
+                             R_avg_opp_CLINCH_landed, R_avg_GROUND_att, R_avg_GROUND_landed,
+                             R_avg_opp_GROUND_att, R_avg_opp_GROUND_landed, R_avg_CTRL_time.seconds.,
+                             R_avg_opp_CTRL_time.seconds., R_total_time_fought.seconds., 
+                             R_total_rounds_fought, R_total_title_bouts, R_current_win_streak, 
+                             R_current_lose_streak, R_longest_win_streak, R_wins, R_losses, R_draw,
+                             R_win_by_Decision_Majority, R_win_by_Decision_Split,
+                             R_win_by_Decision_Unanimous, R_win_by_KO.TKO, R_win_by_Submission,
+                             R_win_by_TKO_Doctor_Stoppage, R_Stance, R_Height_cms, R_Reach_cms, R_Weight_lbs,
+                             R_age, B_fighter, B_avg_KD, B_avg_opp_KD, B_avg_SIG_STR_pct, 
+                             B_avg_opp_SIG_STR_pct, B_avg_TD_pct, B_avg_opp_TD_pct, B_avg_SUB_ATT, 
+                             B_avg_opp_SUB_ATT, B_avg_REV, B_avg_opp_REV, B_avg_SIG_STR_att, 
+                             B_avg_SIG_STR_landed, B_avg_opp_SIG_STR_att,
+                             B_avg_opp_SIG_STR_landed, B_avg_TOTAL_STR_att, B_avg_TOTAL_STR_landed,
+                             B_avg_opp_TOTAL_STR_att, B_avg_opp_TOTAL_STR_landed, B_avg_TD_att,
+                             B_avg_TD_landed, B_avg_opp_TD_att, B_avg_opp_TD_landed, B_avg_HEAD_att,
+                             B_avg_HEAD_landed, B_avg_opp_HEAD_att, B_avg_opp_HEAD_landed, B_avg_BODY_att,
+                             B_avg_BODY_landed, B_avg_opp_BODY_att, B_avg_opp_BODY_landed, B_avg_LEG_att,
+                             B_avg_LEG_landed, B_avg_opp_LEG_att, B_avg_opp_LEG_landed, B_avg_DISTANCE_att,
+                             B_avg_DISTANCE_landed, B_avg_opp_DISTANCE_att, B_avg_opp_DISTANCE_landed,
+                             B_avg_CLINCH_att, B_avg_CLINCH_landed, B_avg_opp_CLINCH_att,
+                             B_avg_opp_CLINCH_landed, B_avg_GROUND_att, B_avg_GROUND_landed,
+                             B_avg_opp_GROUND_att, B_avg_opp_GROUND_landed, B_avg_CTRL_time.seconds.,
+                             B_avg_opp_CTRL_time.seconds., B_total_time_fought.seconds.,
+                             B_total_rounds_fought, B_total_title_bouts, B_current_win_streak,
+                             B_current_lose_streak, B_longest_win_streak, B_wins, B_losses, B_draw,
+                             B_win_by_Decision_Majority, B_win_by_Decision_Split,
+                             B_win_by_Decision_Unanimous, B_win_by_KO.TKO, B_win_by_Submission,
+                             B_win_by_TKO_Doctor_Stoppage, B_Stance, B_Height_cms, B_Reach_cms,
+                             B_Weight_lbs, B_age))
+  }
+}
+```
+
+```{r}
+ufc_data_shuffled <- data2 %>%
+  rowwise() %>%
+  mutate(shuffled_data = list(shuffle_fighters(B_fighter, B_avg_KD, B_avg_opp_KD, B_avg_SIG_STR_pct,
+                                               B_avg_opp_SIG_STR_pct,B_avg_TD_pct,B_avg_opp_TD_pct, B_avg_SUB_ATT,
+                                               B_avg_opp_SUB_ATT, B_avg_REV, B_avg_opp_REV, 
+                                               B_avg_SIG_STR_att, B_avg_SIG_STR_landed,
+                                               B_avg_opp_SIG_STR_att,B_avg_opp_SIG_STR_landed, 
+                                               B_avg_TOTAL_STR_att, B_avg_TOTAL_STR_landed,
+                                               B_avg_opp_TOTAL_STR_att, B_avg_opp_TOTAL_STR_landed, 
+                                               B_avg_TD_att, B_avg_TD_landed, B_avg_opp_TD_att, 
+                                               B_avg_opp_TD_landed, B_avg_HEAD_att,
+                                               B_avg_HEAD_landed, B_avg_opp_HEAD_att, 
+                                               B_avg_opp_HEAD_landed, B_avg_BODY_att,
+                                               B_avg_BODY_landed, B_avg_opp_BODY_att, 
+                                               B_avg_opp_BODY_landed, B_avg_LEG_att, 
+                                               B_avg_LEG_landed, B_avg_opp_LEG_att, 
+                                               B_avg_opp_LEG_landed, B_avg_DISTANCE_att,
+                                               B_avg_DISTANCE_landed, B_avg_opp_DISTANCE_att, 
+                                               B_avg_opp_DISTANCE_landed,B_avg_CLINCH_att, 
+                                               B_avg_CLINCH_landed, B_avg_opp_CLINCH_att,
+                                               B_avg_opp_CLINCH_landed, B_avg_GROUND_att, B_avg_GROUND_landed,
+                                               B_avg_opp_GROUND_att, B_avg_opp_GROUND_landed, B_avg_CTRL_time.seconds.,
+                                               B_avg_opp_CTRL_time.seconds., B_total_time_fought.seconds.,
+                                               B_total_rounds_fought, B_total_title_bouts, B_current_win_streak,
+                                               B_current_lose_streak, B_longest_win_streak, B_wins, B_losses, B_draw,
+                                               B_win_by_Decision_Majority, B_win_by_Decision_Split,
+                                               B_win_by_Decision_Unanimous, B_win_by_KO.TKO, B_win_by_Submission,
+                                               B_win_by_TKO_Doctor_Stoppage, B_Stance, B_Height_cms, B_Reach_cms,
+                                               B_Weight_lbs, B_age, R_fighter, R_avg_KD, R_avg_opp_KD, 
+                                               R_avg_SIG_STR_pct, 
+                                               R_avg_opp_SIG_STR_pct, R_avg_TD_pct, R_avg_opp_TD_pct, R_avg_SUB_ATT, 
+                                               R_avg_opp_SUB_ATT, R_avg_REV, R_avg_opp_REV, R_avg_SIG_STR_att, 
+                                               R_avg_SIG_STR_landed, R_avg_opp_SIG_STR_att,
+                                               R_avg_opp_SIG_STR_landed, R_avg_TOTAL_STR_att, R_avg_TOTAL_STR_landed,
+                                               R_avg_opp_TOTAL_STR_att, R_avg_opp_TOTAL_STR_landed, R_avg_TD_att,
+                                               R_avg_TD_landed, R_avg_opp_TD_att, R_avg_opp_TD_landed, R_avg_HEAD_att,
+                                               R_avg_HEAD_landed, R_avg_opp_HEAD_att, R_avg_opp_HEAD_landed,
+                                               R_avg_BODY_att,
+                                               R_avg_BODY_landed, R_avg_opp_BODY_att, R_avg_opp_BODY_landed,
+                                               R_avg_LEG_att,
+                                               R_avg_LEG_landed, R_avg_opp_LEG_att, R_avg_opp_LEG_landed,
+                                               R_avg_DISTANCE_att,
+                                               R_avg_DISTANCE_landed, R_avg_opp_DISTANCE_att, R_avg_opp_DISTANCE_landed,
+                                               R_avg_CLINCH_att, R_avg_CLINCH_landed, R_avg_opp_CLINCH_att,
+                                               R_avg_opp_CLINCH_landed, R_avg_GROUND_att, R_avg_GROUND_landed,
+                                               R_avg_opp_GROUND_att, R_avg_opp_GROUND_landed, R_avg_CTRL_time.seconds.,
+                                               R_avg_opp_CTRL_time.seconds., R_total_time_fought.seconds.,
+                                               R_total_rounds_fought, R_total_title_bouts, R_current_win_streak,
+                                               R_current_lose_streak, R_longest_win_streak, R_wins, R_losses, R_draw,
+                                               R_win_by_Decision_Majority, R_win_by_Decision_Split,
+                                               R_win_by_Decision_Unanimous, R_win_by_KO.TKO, R_win_by_Submission,
+                                               R_win_by_TKO_Doctor_Stoppage, R_Stance, R_Height_cms, R_Reach_cms,
+                                               R_Weight_lbs, R_age))) %>%
+  ungroup()
+```
+
+
+```{r}
+library(purrr)
+
+ufc_data_shuffled <- ufc_data_shuffled %>%
+  mutate(B_fighter = map_chr(shuffled_data, 1),
+         B_avg_KD = map_chr(shuffled_data, 2),
+         B_avg_opp_KD = map_chr(shuffled_data, 3),
+         B_avg_SIG_STR_pct = map_chr(shuffled_data, 4),
+         B_avg_opp_SIG_STR_pct = map_chr(shuffled_data, 5),
+         B_avg_TD_pct = map_chr(shuffled_data, 6),
+         B_avg_opp_TD_pct = map_chr(shuffled_data, 7),
+         B_avg_SUB_ATT = map_chr(shuffled_data, 8),
+         B_avg_opp_SUB_ATT = map_chr(shuffled_data, 9),
+         B_avg_REV = map_chr(shuffled_data, 10),
+         B_avg_opp_REV = map_chr(shuffled_data, 11),
+         B_avg_SIG_STR_att = map_chr(shuffled_data, 12),
+         B_avg_SIG_STR_landed = map_chr(shuffled_data, 13),
+         B_avg_opp_SIG_STR_att = map_chr(shuffled_data, 14),
+         B_avg_opp_SIG_STR_landed = map_chr(shuffled_data, 15),
+         B_avg_TOTAL_STR_att = map_chr(shuffled_data, 16),
+         B_avg_TOTAL_STR_landed = map_chr(shuffled_data, 17),
+         B_avg_opp_TOTAL_STR_att = map_chr(shuffled_data, 18),
+         B_avg_opp_TOTAL_STR_landed = map_chr(shuffled_data, 19),
+         B_avg_TD_att = map_chr(shuffled_data, 20),
+         B_avg_TD_landed = map_chr(shuffled_data, 21),
+         B_avg_opp_TD_att = map_chr(shuffled_data, 22),
+         B_avg_opp_TD_landed = map_chr(shuffled_data, 23),
+         B_avg_HEAD_att = map_chr(shuffled_data, 24),
+         B_avg_HEAD_landed = map_chr(shuffled_data, 25),
+         B_avg_opp_HEAD_att = map_chr(shuffled_data, 26),
+         B_avg_opp_HEAD_landed = map_chr(shuffled_data, 27),
+         B_avg_BODY_att = map_chr(shuffled_data, 28),
+         B_avg_BODY_landed = map_chr(shuffled_data, 29),
+         B_avg_opp_BODY_att = map_chr(shuffled_data, 30),
+         B_avg_opp_BODY_landed = map_chr(shuffled_data, 31),
+         B_avg_LEG_att = map_chr(shuffled_data, 32),
+         B_avg_LEG_landed = map_chr(shuffled_data, 33),
+         B_avg_opp_LEG_att = map_chr(shuffled_data, 34),
+         B_avg_opp_LEG_landed = map_chr(shuffled_data, 35),
+         B_avg_DISTANCE_att = map_chr(shuffled_data, 36),
+         B_avg_DISTANCE_landed = map_chr(shuffled_data, 37),
+         B_avg_opp_DISTANCE_att = map_chr(shuffled_data, 38),
+         B_avg_opp_DISTANCE_landed = map_chr(shuffled_data, 39),
+         B_avg_CLINCH_att = map_chr(shuffled_data, 40),
+         B_avg_CLINCH_landed = map_chr(shuffled_data, 41),
+         B_avg_opp_CLINCH_att = map_chr(shuffled_data, 42),
+         B_avg_opp_CLINCH_landed = map_chr(shuffled_data, 43),
+         B_avg_GROUND_att = map_chr(shuffled_data, 44),
+         B_avg_GROUND_landed = map_chr(shuffled_data, 45),
+         B_avg_opp_GROUND_att = map_chr(shuffled_data, 46),
+         B_avg_opp_GROUND_landed = map_chr(shuffled_data, 47),
+         B_avg_CTRL_time.seconds. = map_chr(shuffled_data, 48),
+         B_avg_opp_CTRL_time.seconds. = map_chr(shuffled_data, 49),
+         B_total_time_fought.seconds. = map_chr(shuffled_data, 50),
+         B_total_rounds_fought = map_chr(shuffled_data, 51),
+         B_total_title_bouts = map_chr(shuffled_data, 52),
+         B_current_win_streak = map_chr(shuffled_data, 53),
+         B_current_lose_streak = map_chr(shuffled_data, 54),
+         B_longest_win_streak = map_chr(shuffled_data, 55),
+         B_wins = map_chr(shuffled_data, 56),
+         B_losses = map_chr(shuffled_data, 57),
+         B_draw = map_chr(shuffled_data, 58),
+         B_win_by_Decision_Majority = map_chr(shuffled_data, 59),
+         B_win_by_Decision_Split = map_chr(shuffled_data, 60),
+         B_win_by_Decision_Unanimous = map_chr(shuffled_data, 61),
+         B_win_by_KO.TKO = map_chr(shuffled_data, 62),
+         B_win_by_Submission = map_chr(shuffled_data, 63),
+         B_win_by_TKO_Doctor_Stoppage = map_chr(shuffled_data, 64),
+         B_Stance = map_chr(shuffled_data, 65),
+         B_Height_cms = map_chr(shuffled_data, 66),
+         B_Reach_cms = map_chr(shuffled_data, 67),
+         B_Weight_lbs = map_chr(shuffled_data, 68),
+         B_age = map_chr(shuffled_data, 69),
+         R_fighter = map_chr(shuffled_data, 70),
+         R_avg_KD = map_chr(shuffled_data, 71),
+         R_avg_opp_KD = map_chr(shuffled_data, 72),
+         R_avg_SIG_STR_pct = map_chr(shuffled_data, 73),
+         R_avg_opp_SIG_STR_pct = map_chr(shuffled_data, 74),
+         R_avg_TD_pct = map_chr(shuffled_data, 75),
+         R_avg_opp_TD_pct = map_chr(shuffled_data, 76),
+         R_avg_SUB_ATT = map_chr(shuffled_data, 77),
+         R_avg_opp_SUB_ATT = map_chr(shuffled_data, 78),
+         R_avg_REV = map_chr(shuffled_data, 79),
+         R_avg_opp_REV = map_chr(shuffled_data, 80),
+         R_avg_SIG_STR_att = map_chr(shuffled_data, 81),
+         R_avg_SIG_STR_landed = map_chr(shuffled_data, 82),
+         R_avg_opp_SIG_STR_att = map_chr(shuffled_data, 83),
+         R_avg_opp_SIG_STR_landed = map_chr(shuffled_data, 84),
+         R_avg_TOTAL_STR_att = map_chr(shuffled_data, 85),
+         R_avg_TOTAL_STR_landed = map_chr(shuffled_data, 86),
+         R_avg_opp_TOTAL_STR_att = map_chr(shuffled_data, 87),
+         R_avg_opp_TOTAL_STR_landed = map_chr(shuffled_data, 88),
+         R_avg_TD_att = map_chr(shuffled_data, 89),
+         R_avg_TD_landed = map_chr(shuffled_data, 90),
+         R_avg_opp_TD_att = map_chr(shuffled_data, 91),
+         R_avg_opp_TD_landed = map_chr(shuffled_data, 92),
+         R_avg_HEAD_att = map_chr(shuffled_data, 93),
+         R_avg_HEAD_landed = map_chr(shuffled_data, 94),
+         R_avg_opp_HEAD_att = map_chr(shuffled_data, 95),
+         R_avg_opp_HEAD_landed = map_chr(shuffled_data, 96),
+         R_avg_BODY_att = map_chr(shuffled_data, 97),
+         R_avg_BODY_landed = map_chr(shuffled_data, 98),
+         R_avg_opp_BODY_att = map_chr(shuffled_data, 99),
+         R_avg_opp_BODY_landed = map_chr(shuffled_data, 100),
+         R_avg_LEG_att = map_chr(shuffled_data, 101),
+         R_avg_LEG_landed = map_chr(shuffled_data, 102),
+         R_avg_opp_LEG_att = map_chr(shuffled_data, 103),
+         R_avg_opp_LEG_landed = map_chr(shuffled_data, 104),
+         R_avg_DISTANCE_att = map_chr(shuffled_data, 105),
+         R_avg_DISTANCE_landed = map_chr(shuffled_data, 106),
+         R_avg_opp_DISTANCE_att = map_chr(shuffled_data, 107),
+         R_avg_opp_DISTANCE_landed = map_chr(shuffled_data, 108),
+         R_avg_CLINCH_att = map_chr(shuffled_data, 109),
+         R_avg_CLINCH_landed = map_chr(shuffled_data, 110),
+         R_avg_opp_CLINCH_att = map_chr(shuffled_data, 111),
+         R_avg_opp_CLINCH_landed = map_chr(shuffled_data, 112),
+         R_avg_GROUND_att = map_chr(shuffled_data, 113),
+         R_avg_GROUND_landed = map_chr(shuffled_data, 114),
+         R_avg_opp_GROUND_att = map_chr(shuffled_data, 115),
+         R_avg_opp_GROUND_landed = map_chr(shuffled_data, 116),
+         R_avg_CTRL_time.seconds. = map_chr(shuffled_data, 117),
+         R_avg_opp_CTRL_time.seconds. = map_chr(shuffled_data, 118),
+         R_total_time_fought.seconds. = map_chr(shuffled_data, 119),
+         R_total_rounds_fought = map_chr(shuffled_data, 120),
+         R_total_title_bouts = map_chr(shuffled_data, 121),
+         R_current_win_streak = map_chr(shuffled_data, 122),
+         R_current_lose_streak = map_chr(shuffled_data, 123),
+         R_longest_win_streak = map_chr(shuffled_data, 124),
+         R_wins = map_chr(shuffled_data, 125),
+         R_losses = map_chr(shuffled_data, 126),
+         R_draw = map_chr(shuffled_data, 127),
+         R_win_by_Decision_Majority = map_chr(shuffled_data, 128),
+         R_win_by_Decision_Split = map_chr(shuffled_data, 129),
+         R_win_by_Decision_Unanimous = map_chr(shuffled_data, 130),
+         R_win_by_KO.TKO = map_chr(shuffled_data, 131),
+         R_win_by_Submission = map_chr(shuffled_data, 132),
+         R_win_by_TKO_Doctor_Stoppage = map_chr(shuffled_data, 133),
+         R_Stance = map_chr(shuffled_data, 134),
+         R_Height_cms = map_chr(shuffled_data, 135),
+         R_Reach_cms = map_chr(shuffled_data, 136),
+         R_Weight_lbs = map_chr(shuffled_data, 137),
+         R_age = map_chr(shuffled_data, 138))
+```
+
+```{r}
+ufc_data_shuffled <- ufc_data_shuffled %>%
+  mutate(Winner = ifelse(Winner2 == R_fighter, "Red", "Blue"))
+```
+
+```{r}
+ggplot(data = ufc_data_shuffled, aes(x = Winner)) + geom_bar()
+```
+
+
+
+
+
+
+
+
+
