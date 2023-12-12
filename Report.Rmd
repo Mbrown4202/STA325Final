@@ -21,7 +21,17 @@ library(missForest)
 
 data <- read_csv("data.csv")
 ```
+## Introduction 
 
+The UFC began as a professional mixed martial arts organization in 1993 serving as an alternative hand-to-hand combat sport that combined traditional boxing with wrestling, karate, kickboxing, and jiu-jistu fighting techniques. The entity was acquired by a group led by Dana White in 2001, who has served as the President for over two decades. Since estabilshing control, Dana White has exponentially grown the reach of UFC's product while also creating more structure and sanction to the sport of MMA. UFC currently has over 60 global broadcasting partners and is able to be accessed in over 165 different countries. With a traveling, tour-like model, the UFC has been able to sell-out many arenas across the world as equally become a highly-touted event to attend similar to boxing matches with well-known participants involved. 
+
+In many other North-american based sports, organizations have invested and founded their own analytics departments. These departments are responsible for using data to acquire and develop the right talent that will lead to on-field success and improve the team's product. Since the UFC's participants are individual fighters that often follow their own training regiment, there is a smaller focus on analytics within the sport.   
+
+The purpose of our project is two-fold. We want to evaluate fighters' historical data to determine fight styles that may posses a stronger correlation to sucess within the octagon. Identifying important factors will allow UFC fighters and their hired trainers to optimize their training regime, and will also benefit commentators in pointing out facets of the match the audience should keep in mind while spectating. 
+
+Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
+
+Our data is each UFC fight from 1993-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the amount of different types of attacks they have faced from their previous opponents. We plan to initially fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. From there, we plan to evaluate the inclusion of nonlinear effects within the most influential predictors in hopes to maximize predictive accuracy. 
 
 ```{r}
 data %>%
@@ -560,8 +570,9 @@ class4_test  <- dplyr::anti_join(class4, class4_train, by = 'id')
 
 ```{r}
 rows_with_na <- class1_train[!complete.cases(class1_train), ]
-rf.class1 <- randomForest(Winner~., data = class4_train)
+rf.class1 <- randomForest(Winner~., ntree = 100, data = class1_train)
 #yhat.rf <- predict(rf.boston, newdata = Boston[-train,])
+rf.class2 <- randomForest(Winner~., ntree = 100, data = class2_train)
 
 
 class1_train$Winner
