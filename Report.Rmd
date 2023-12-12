@@ -437,7 +437,10 @@ ufc_data_shuffled <- ufc_data_shuffled %>%
 ufc_data_shuffled <- ufc_data_shuffled %>%
   mutate_at(9:71, as.numeric) %>% 
   mutate_at(73:138, as.numeric) %>% 
-  mutate_at(140:144, as.numeric)
+  mutate_at(140:144, as.numeric) 
+
+#Turning Winner into a factor
+ufc_data_shuffled$Winner <- as.factor(ufc_data_shuffled$Winner)
 ```
 
 
@@ -511,63 +514,17 @@ kable(Ratt_class, caption = "Avg Attempt of Different Style Attacks", digits = 1
 ufc_data_shuffled_subsetted <-  ufc_data_shuffled[,!names(ufc_data_shuffled) %in% 
                                  c("R_fighter", "B_fighter", "Referee", "location", "first_fight", "Winner2", "shuffled_data", "date", "fight_gender", "Referee")]
 
-# Adding "unknown" to categorical variables with N/A
 rows_with_na <- ufc_data_shuffled_subsetted[!complete.cases(ufc_data_shuffled_subsetted), ]
+nrow(rows_with_na)
 
-ufc_data_shuffled_subsetted <- ufc_data_shuffled_subsetted %>% mutate(R_Stance = ifelse(is.na(R_Stance), "Unknown", R_Stance), 
-                                                                      B_Stance = ifelse(is.na(B_Stance), "Unknown", B_Stance))
-
-rows_with_na <- ufc_data_shuffled_subsetted[!complete.cases(ufc_data_shuffled_subsetted), ]
-```
-
-```{r, eval= FALSE}
-# Using other physical data to impute reach, weight, & height
-## Check with Simon on why this is not working 
-
-ufc_data_shuffled_subsetted %>% filter()
-
-clean_data <- na.omit(ufc_data_shuffled_subsetted)
-missing_data <- ufc_data_shuffled_subsetted[!complete.cases(ufc_data_shuffled_subsetted), ]
-
-R_reach_model <- lm(R_Reach_cms ~ R_Height_cms + R_Weight_lbs, data = clean_data)
-B_reach_model <- lm(B_Reach_cms ~ B_Height_cms + B_Weight_lbs, data = clean_data)
-R_height_model <- lm(R_Height_cms ~ R_Reach_cms + R_Weight_lbs, data = clean_data)
-B_height_model <- lm(B_Height_cms ~ B_Reach_cms + B_Weight_lbs, data = clean_data)
-R_weight_model <- lm(R_Weight_lbs ~ R_Height_cms + R_Reach_cms, data = clean_data)
-B_weight_model <- lm(B_Weight_lbs ~ B_Height_cms + B_Reach_cms, data = clean_data)
-
-
-#ufc_data_shuffled_subsetted <- ufc_data_shuffled_subsetted %>% mutate(R_Reach_cms = ifelse(is.na(R_Reach_cms), predict(R_reach_model, newdata = missing_data), R_Reach_cms), 
-                                                                      #B_Reach_cms = ifelse(is.na(B_Reach_cms), predict(B_reach_model, newdata = missing_data), B_Reach_cms), 
-                                                                      #R_Height_cms = ifelse(is.na(R_Height_cms), predict(R_Height_cms, newdata = missing_data), R_Height_cms), 
-                                                                      #B_Height_cms = ifelse(is.na(B_Height_cms), predict(B_Height_cms, new_data = missing_data), B_Height_cms), 
-                                                                      #R_Weight_lbs = ifelse(is.na(R_Weight_lbs), predict(R_Weight_lbs, new_data = missing_data), R_Weight_lbs), 
-                                                                      #B_Weight_lbs = ifelse(is.na(B_Weight_lbs), predict(B_Weight_lbs, new_data = missing_data), B_Weight_lbs))
-
-ufc_data_shuffled_subsetted <- ufc_data_shuffled_subsetted %>% mutate(R_Reach_cms = ifelse(is.na(R_Reach_cms), mean(R_Reach_cms, na.rm = TRUE), R_Reach_cms), 
-                                                                      B_Reach_cms = ifelse(is.na(B_Reach_cms), mean(R_Reach_cms, na.rm = TRUE), B_Reach_cms), 
-                                                                      R_Height_cms = ifelse(is.na(R_Height_cms), mean(R_Height_cms, na.rm = TRUE), R_Height_cms), 
-                                                                      B_Height_cms = ifelse(is.na(B_Height_cms), mean(B_Height_cms, na.rm = TRUE), B_Height_cms), 
-                                                                      R_Weight_lbs = ifelse(is.na(R_Weight_lbs), mean(R_Weight_lbs, na.rm = TRUE), R_Weight_lbs), 
-                                                                      B_Weight_lbs = ifelse(is.na(B_Weight_lbs), mean(B_Weight_lbs, na.rm = TRUE), B_Weight_lbs), 
-                                                                      R_age = ifelse(is.na(R_age), mean(R_age, na.rm = TRUE), R_age), 
-                                                                      B_age = ifelse(is.na(B_age), mean(B_age, na.rm = TRUE), B_age)) 
-
+# removing all N/A values
+ufc_data_shuffled_subsetted <- na.omit(ufc_data_shuffled_subsetted)
 
 ```
-
-
-
-
-
 
 ## Random Forest Model Creation 
 
 ```{r}
-
-
-rows_with_na <- ufc_data_shuffled_subsetted[!complete.cases(ufc_data_shuffled_subsetted), ]
-
 set.seed(2)
 class1 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 1")
 class2 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 2")
@@ -602,9 +559,12 @@ class4_test  <- dplyr::anti_join(class4, class4_train, by = 'id')
 
 
 ```{r}
-#rf.class1 <- randomForest(Winner~., data = class1_train,
-                          #mtry = sqrt(141), importance = TRUE)
+rows_with_na <- class1_train[!complete.cases(class1_train), ]
+rf.class1 <- randomForest(Winner~., data = class4_train)
 #yhat.rf <- predict(rf.boston, newdata = Boston[-train,])
+
+
+class1_train$Winner
 ```
 
 
