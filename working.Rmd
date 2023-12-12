@@ -168,7 +168,15 @@ Those with title fight experience are typically placed in the red corner.
 
 ```{r}
 
-
+datastance_long <- data %>% select(R_Stance, B_Stance) %>% gather(key = "Variable", value = "Value")
+ggplot(datastance_long, aes(x = Value, fill = Value)) +
+  geom_bar() +
+  labs(title = "Frequency of Categories by Group",
+       x = "Category",
+       y = "Frequency") +
+  scale_fill_brewer(palette = "Set3") +  # Change the color palette if needed
+  facet_wrap(~ Variable, ncol = 2) +
+  theme_minimal() + 
 
 #Exploring potential interaction between stance and attacking attempts
 data_differences %>% group_by(R_Stance) %>% 
@@ -179,4 +187,24 @@ data_differences %>% group_by(R_Stance) %>%
 
 ```
 
+```{r}
+library(ggplot2)
+
+# Example data frame with categorical and other columns
+data <- data.frame(
+  Category = factor(rep(c("A", "B", "C"), times = c(20, 30, 50))),
+  Group = factor(rep(c("X", "Y"), each = 50))
+)
+
+# Creating two separate plots based on the 'Group' column
+ggplot(data, aes(x = Category, fill = Category)) +
+  geom_bar() +
+  labs(title = "Frequency of Categories by Group",
+       x = "Category",
+       y = "Frequency") +
+  scale_fill_brewer(palette = "Set3") +  # Change the color palette if needed
+  facet_wrap(~ Group, ncol = 2) +
+  theme_minimal()
+
+```
 
