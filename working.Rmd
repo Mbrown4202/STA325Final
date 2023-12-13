@@ -208,3 +208,50 @@ ggplot(data, aes(x = Category, fill = Category)) +
 
 ```
 
+
+## Random Forest Model Creation 
+
+```{r}
+set.seed(2)
+class1 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 1")
+class2 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 2")
+class3 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 3")
+class4 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 4")
+
+#create ID column
+class1$id <- 1:nrow(class1)
+#use 70% of dataset as training set and 30% as test set 
+class1_train <- class1 %>% dplyr::sample_frac(0.7)
+class1_test  <- dplyr::anti_join(class1, class1_train, by = 'id')
+
+#create ID column
+class2$id <- 1:nrow(class2)
+#use 70% of dataset as training set and 30% as test set 
+class2_train <- class2 %>% dplyr::sample_frac(0.7)
+class2_test  <- dplyr::anti_join(class2, class2_train, by = 'id')
+
+#create ID column
+class3$id <- 1:nrow(class3)
+#use 70% of dataset as training set and 30% as test set 
+class3_train <- class3 %>% dplyr::sample_frac(0.7)
+class3_test  <- dplyr::anti_join(class3, class3_train, by = 'id')
+
+#create ID column
+class4$id <- 1:nrow(class4)
+#use 70% of dataset as training set and 30% as test set 
+class4_train <- class4 %>% dplyr::sample_frac(0.7)
+class4_test  <- dplyr::anti_join(class4, class4_train, by = 'id')
+
+```
+
+
+```{r}
+rows_with_na <- class1_train[!complete.cases(class1_train), ]
+rf.class1 <- randomForest(Winner~., ntree = 100, data = class1_train)
+#yhat.rf <- predict(rf.boston, newdata = Boston[-train,])
+rf.class2 <- randomForest(Winner~., ntree = 100, data = class2_train)
+
+
+class1_train$Winner
+```
+

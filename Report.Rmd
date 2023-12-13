@@ -35,12 +35,12 @@ The purpose of our project is two-fold. We want to evaluate fighters' historical
 
 Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
 
-Our data is each UFC fight from 1993-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the amount of different types of attacks they have faced from their previous opponents. We plan to initially fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. From there, we plan to evaluate the inclusion of nonlinear effects within the most influential predictors in hopes to maximize predictive accuracy. 
+Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the amount of different types of attacks they have faced from their previous opponents. We plan to initially fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. From there, we plan to evaluate the inclusion of nonlinear effects within the most influential predictors in hopes to maximize predictive accuracy. 
 
 
 ## Data Description and EDA
 
-The dataset used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. Using 
+The dataset used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. The dataset contains roughly 6,012 unique fights over a 27 year span, with each row containing data on fighters in the red and blue corner, a universal classification system used throughout all rows. The corner classification is the differentiating factor in providing each fighter's historical statistics. Since a given fighter could be in the red corner for one fight and in the blue corner for another, we don't place any value in the classification. 
 
 ```{r}
 data %>%
@@ -541,50 +541,469 @@ ufc_data_shuffled_subsetted <- na.omit(ufc_data_shuffled_subsetted)
 
 ```
 
-## Random Forest Model Creation 
+## Inference EDA/make model
+
+# Removing Columns that will provide no meaning to our models
+```{r}
+ufc_data_shuffled_subsetted <-  ufc_data_shuffled[,!names(ufc_data_shuffled) %in% c("R_fighter", "B_fighter", "Referee",
+                                                                                    "location", "first_fight", "Winner2",
+                                                                                    "shuffled_data", "date", "fight_gender",
+                                                                                    "year", "weight", "weight_class")]
+```
 
 ```{r}
-set.seed(2)
+ufc_data_shuffled_subsetted  %>%
+  group_by(R_draw) %>%
+  summarise(count = n())
+
+ufc_data_shuffled_subsetted  %>%
+  group_by(B_draw) %>%
+  summarise(count = n())
+
+ufc_data_shuffled_subsetted <-  ufc_data_shuffled_subsetted[,!names(ufc_data_shuffled_subsetted) 
+                                                            %in% c("R_draw", "B_draw")]
+```
+
+No draws. Going to remove this as well.
+
+
+# checking for NA values
+```{r}
+any(is.na(ufc_data_shuffled_subsetted))
+sum(is.na(ufc_data_shuffled_subsetted))
+colSums(is.na(ufc_data_shuffled_subsetted))
+```
+
+
+# removing all rows with NA values
+```{r}
+ufc_data_shuffled_subsetted <- na.omit(ufc_data_shuffled_subsetted)
+
+nrow(ufc_data_shuffled)
+nrow(ufc_data_shuffled_subsetted)
+nrow(ufc_data_shuffled) - nrow(ufc_data_shuffled_subsetted)
+```
+
+
+# creating 4 different dataframes, dividing up by our weight class division
+```{r}
 class1 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 1")
 class2 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 2")
 class3 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 3")
 class4 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 4")
 
-#create ID column
-class1$id <- 1:nrow(class1)
-#use 70% of dataset as training set and 30% as test set 
-class1_train <- class1 %>% dplyr::sample_frac(0.7)
-class1_test  <- dplyr::anti_join(class1, class1_train, by = 'id')
+class1 <-  class1[,!names(class1) %in% c("new_class")]
+class2 <-  class2[,!names(class2) %in% c("new_class")]
+class3 <-  class3[,!names(class3) %in% c("new_class")]
+class4 <-  class4[,!names(class4) %in% c("new_class")]
 
-#create ID column
-class2$id <- 1:nrow(class2)
-#use 70% of dataset as training set and 30% as test set 
-class2_train <- class2 %>% dplyr::sample_frac(0.7)
-class2_test  <- dplyr::anti_join(class2, class2_train, by = 'id')
-
-#create ID column
-class3$id <- 1:nrow(class3)
-#use 70% of dataset as training set and 30% as test set 
-class3_train <- class3 %>% dplyr::sample_frac(0.7)
-class3_test  <- dplyr::anti_join(class3, class3_train, by = 'id')
-
-#create ID column
-class4$id <- 1:nrow(class4)
-#use 70% of dataset as training set and 30% as test set 
-class4_train <- class4 %>% dplyr::sample_frac(0.7)
-class4_test  <- dplyr::anti_join(class4, class4_train, by = 'id')
-
+nrow(class1)
+nrow(class2)
+nrow(class3)
+nrow(class4)
 ```
 
 
+#check multicollinearity
 ```{r}
-rows_with_na <- class1_train[!complete.cases(class1_train), ]
-rf.class1 <- randomForest(Winner~., ntree = 100, data = class1_train)
-#yhat.rf <- predict(rf.boston, newdata = Boston[-train,])
-rf.class2 <- randomForest(Winner~., ntree = 100, data = class2_train)
+corr_data_class1 <- class1[sapply(class1, is.numeric)]
+corr_data_class1 <- corr_data_class1[, sapply(corr_data_class1, function(x) sd(x, na.rm = TRUE) > 0)]
+
+extract_high_corr <- function(corr_data_class1, threshold = 0.7) {
+  corr_matrix <- cor(corr_data_class1, use = "complete.obs")
+  high_corr <- data.frame(Var1 = character(), 
+                                  Var2 = character(), 
+                                  Correlation = numeric())
+  for (i in 1:(ncol(corr_matrix)-1)) {
+    for (j in (i+1):ncol(corr_matrix)) {
+      if (abs(corr_matrix[i, j]) > threshold) {
+        high_corr <- rbind(high_corr, 
+                           data.frame(Var1 = colnames(corr_matrix)[i],
+                                      Var2 = colnames(corr_matrix)[j],
+                                      Correlation = corr_matrix[i, j]))
+      }
+    }
+  }
+  return(high_corr)
+}
+
+extract_high_corr(corr_data_class1, 0.7)
+```
+
+```{r}
+corr_data_class2 <- class2[sapply(class2, is.numeric)]
+corr_data_class2 <- corr_data_class2[, sapply(corr_data_class2, function(x) sd(x, na.rm = TRUE) > 0)]
+
+extract_high_corr <- function(corr_data_class2, threshold = 0.7) {
+  corr_matrix <- cor(corr_data_class2, use = "complete.obs")
+  high_corr <- data.frame(Var1 = character(), 
+                                  Var2 = character(), 
+                                  Correlation = numeric())
+  for (i in 1:(ncol(corr_matrix)-1)) {
+    for (j in (i+1):ncol(corr_matrix)) {
+      if (abs(corr_matrix[i, j]) > threshold) {
+        high_corr <- rbind(high_corr, 
+                           data.frame(Var1 = colnames(corr_matrix)[i],
+                                      Var2 = colnames(corr_matrix)[j],
+                                      Correlation = corr_matrix[i, j]))
+      }
+    }
+  }
+  return(high_corr)
+}
+
+extract_high_corr(corr_data_class2, 0.7)
+```
+
+```{r}
+corr_data_class3 <- class3[sapply(class3, is.numeric)]
+corr_data_class3 <- corr_data_class3[, sapply(corr_data_class3, function(x) sd(x, na.rm = TRUE) > 0)]
+
+extract_high_corr <- function(corr_data_class3, threshold = 0.7) {
+  corr_matrix <- cor(corr_data_class3, use = "complete.obs")
+  high_corr <- data.frame(Var1 = character(), 
+                                  Var2 = character(), 
+                                  Correlation = numeric())
+  for (i in 1:(ncol(corr_matrix)-1)) {
+    for (j in (i+1):ncol(corr_matrix)) {
+      if (abs(corr_matrix[i, j]) > threshold) {
+        high_corr <- rbind(high_corr, 
+                           data.frame(Var1 = colnames(corr_matrix)[i],
+                                      Var2 = colnames(corr_matrix)[j],
+                                      Correlation = corr_matrix[i, j]))
+      }
+    }
+  }
+  return(high_corr)
+}
+
+extract_high_corr(corr_data_class3, 0.7)
+```
+
+```{r}
+corr_data_class4 <- class4[sapply(class4, is.numeric)]
+corr_data_class4 <- corr_data_class4[, sapply(corr_data_class4, function(x) sd(x, na.rm = TRUE) > 0)]
+
+extract_high_corr <- function(corr_data_class4, threshold = 0.7) {
+  corr_matrix <- cor(corr_data_class4, use = "complete.obs")
+  high_corr <- data.frame(Var1 = character(), 
+                                  Var2 = character(), 
+                                  Correlation = numeric())
+  for (i in 1:(ncol(corr_matrix)-1)) {
+    for (j in (i+1):ncol(corr_matrix)) {
+      if (abs(corr_matrix[i, j]) > threshold) {
+        high_corr <- rbind(high_corr, 
+                           data.frame(Var1 = colnames(corr_matrix)[i],
+                                      Var2 = colnames(corr_matrix)[j],
+                                      Correlation = corr_matrix[i, j]))
+      }
+    }
+  }
+  return(high_corr)
+}
+
+extract_high_corr(corr_data_class4, 0.7)
+```
+
+There are so many predictor variables (over 100), we need to reduce that number. First, creating correlation matrix to identify variables that are highly correlated with each other. It would be much to visualize all combinations, so we will only extract high correlation combos (correlation > 0.7), for each class dataframe.
+
+over 180 combinations in every class have high correlation. A lot.
+
+Now need to deal with multicollinearity and perform variable selection. Will use ridge regression (to reduce multicollinearity) and lasso (to select varialbes). This is know as Elastic Net (linear regression model that includes both the L1 penalty of Lasso and the L2 penalty of Ridge regression). Elastic Net combines both L2 and L1 penalties of ridge regression and lasso. It controls the mixing of the two penalties through a parameter (lambda).
 
 
-class1_train$Winner
+#scale numerical predictors
+```{r}
+names(class1)[sapply(class1, is.numeric)]
+
+numerical_columns <- c("B_avg_KD", "B_avg_opp_KD", "B_avg_SIG_STR_pct",
+                       "B_avg_opp_SIG_STR_pct", "B_avg_TD_pct", "B_avg_opp_TD_pct", "B_avg_SUB_ATT",
+                       "B_avg_opp_SUB_ATT", "B_avg_REV", "B_avg_opp_REV", 
+                       "B_avg_SIG_STR_att", "B_avg_SIG_STR_landed",
+                       "B_avg_opp_SIG_STR_att", "B_avg_opp_SIG_STR_landed", 
+                       "B_avg_TOTAL_STR_att", "B_avg_TOTAL_STR_landed",
+                       "B_avg_opp_TOTAL_STR_att", "B_avg_opp_TOTAL_STR_landed", 
+                       "B_avg_TD_att", "B_avg_TD_landed", "B_avg_opp_TD_att", 
+                       "B_avg_opp_TD_landed", "B_avg_HEAD_att",
+                       "B_avg_HEAD_landed", "B_avg_opp_HEAD_att", 
+                       "B_avg_opp_HEAD_landed", "B_avg_BODY_att",
+                       "B_avg_BODY_landed", "B_avg_opp_BODY_att", 
+                       "B_avg_opp_BODY_landed", "B_avg_LEG_att", 
+                       "B_avg_LEG_landed", "B_avg_opp_LEG_att", 
+                       "B_avg_opp_LEG_landed", "B_avg_DISTANCE_att",
+                       "B_avg_DISTANCE_landed", "B_avg_opp_DISTANCE_att", 
+                       "B_avg_opp_DISTANCE_landed", "B_avg_CLINCH_att", 
+                       "B_avg_CLINCH_landed", "B_avg_opp_CLINCH_att",
+                       "B_avg_opp_CLINCH_landed", "B_avg_GROUND_att", "B_avg_GROUND_landed",
+                       "B_avg_opp_GROUND_att", "B_avg_opp_GROUND_landed", "B_avg_CTRL_time.seconds.",
+                       "B_avg_opp_CTRL_time.seconds.", "B_total_time_fought.seconds.",
+                       "B_total_rounds_fought", "B_total_title_bouts", "B_current_win_streak",
+                       "B_current_lose_streak", "B_longest_win_streak", "B_wins", "B_losses",
+                       "B_win_by_Decision_Majority", "B_win_by_Decision_Split",
+                       "B_win_by_Decision_Unanimous", "B_win_by_KO.TKO", "B_win_by_Submission",
+                       "B_win_by_TKO_Doctor_Stoppage", "B_Height_cms", "B_Reach_cms",
+                       "B_Weight_lbs", "B_age", "R_avg_KD", "R_avg_opp_KD", "R_avg_SIG_STR_pct", 
+                       "R_avg_opp_SIG_STR_pct", "R_avg_TD_pct", "R_avg_opp_TD_pct", "R_avg_SUB_ATT", 
+                       "R_avg_opp_SUB_ATT", "R_avg_REV", "R_avg_opp_REV", "R_avg_SIG_STR_att", 
+                       "R_avg_SIG_STR_landed", "R_avg_opp_SIG_STR_att",
+                       "R_avg_opp_SIG_STR_landed", "R_avg_TOTAL_STR_att", "R_avg_TOTAL_STR_landed",
+                       "R_avg_opp_TOTAL_STR_att", "R_avg_opp_TOTAL_STR_landed", "R_avg_TD_att",
+                       "R_avg_TD_landed", "R_avg_opp_TD_att", "R_avg_opp_TD_landed", "R_avg_HEAD_att",
+                       "R_avg_HEAD_landed", "R_avg_opp_HEAD_att", "R_avg_opp_HEAD_landed", "R_avg_BODY_att",
+                       "R_avg_BODY_landed", "R_avg_opp_BODY_att", "R_avg_opp_BODY_landed", "R_avg_LEG_att",
+                       "R_avg_LEG_landed", "R_avg_opp_LEG_att", "R_avg_opp_LEG_landed", "R_avg_DISTANCE_att",
+                       "R_avg_DISTANCE_landed", "R_avg_opp_DISTANCE_att", "R_avg_opp_DISTANCE_landed",
+                       "R_avg_CLINCH_att", "R_avg_CLINCH_landed", "R_avg_opp_CLINCH_att",
+                       "R_avg_opp_CLINCH_landed", "R_avg_GROUND_att", "R_avg_GROUND_landed",
+                       "R_avg_opp_GROUND_att", "R_avg_opp_GROUND_landed", "R_avg_CTRL_time.seconds.",
+                       "R_avg_opp_CTRL_time.seconds.", "R_total_time_fought.seconds.",
+                       "R_total_rounds_fought", "R_total_title_bouts", "R_current_win_streak",
+                       "R_current_lose_streak", "R_longest_win_streak", "R_wins", "R_losses",
+                       "R_win_by_Decision_Majority", "R_win_by_Decision_Split",
+                       "R_win_by_Decision_Unanimous", "R_win_by_KO.TKO", "R_win_by_Submission",
+                       "R_win_by_TKO_Doctor_Stoppage", "R_Height_cms", "R_Reach_cms", "R_Weight_lbs", "R_age")
+
+class1_scaled <- class1
+class1_scaled[, numerical_columns] <- scale(class1[, numerical_columns])
+
+class2_scaled <- class2
+class2_scaled[, numerical_columns] <- scale(class2[, numerical_columns])
+
+class3_scaled <- class3
+class3_scaled[, numerical_columns] <- scale(class3[, numerical_columns])
+
+class4_scaled <- class4
+class4_scaled[, numerical_columns] <- scale(class4[, numerical_columns])
+```
+
+I scaled the numerical predictors for each dataset because these techniques are sensitive to scale.
+
+
+#transform categorical predictors
+```{r}
+library(caret)
+
+dummies1 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class1_scaled)
+dummy_data1 <- predict(dummies1, newdata = class1_scaled)
+class1_scaled <- cbind(class1_scaled[, !names(class1_scaled) %in% c('Winner', 
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data1)
+class1_scaled <-  class1_scaled[,!names(class1_scaled) %in% c("WinnerBlue")]
+
+dummies2 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class2_scaled)
+dummy_data2 <- predict(dummies2, newdata = class2_scaled)
+class2_scaled <- cbind(class2_scaled[, !names(class2_scaled) %in% c('Winner',
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data2)
+class2_scaled <-  class2_scaled[,!names(class2_scaled) %in% c("WinnerBlue")]
+
+dummies3 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class3_scaled)
+dummy_data3 <- predict(dummies3, newdata = class3_scaled)
+class3_scaled <- cbind(class3_scaled[, !names(class3_scaled) %in% c('Winner',
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data3)
+class3_scaled <-  class3_scaled[,!names(class3_scaled) %in% c("WinnerBlue")]
+
+dummies4 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class4_scaled)
+dummy_data4 <- predict(dummies4, newdata = class4_scaled)
+class4_scaled <- cbind(class4_scaled[, !names(class4_scaled) %in% c('Winner',
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data4)
+class4_scaled <-  class4_scaled[,!names(class4_scaled) %in% c("WinnerBlue")]
+```
+
+I will transform the categorical variables (including our response variable) into numerical format so they can be used in Elastic Net. I will do this by using dummy variables. I am removing the additional dummy variable for the response, so it is only in the context of Red winning or losing (1 = Red win, 0 = Red lose).
+
+
+#create test and train datasets
+```{r}
+set.seed(2)
+class1_scaled$id <- 1:nrow(class1_scaled)
+class1_train <- class1_scaled %>% dplyr::sample_frac(0.7)
+class1_test  <- dplyr::anti_join(class1_scaled, class1_train, by = 'id')
+
+class2_scaled$id <- 1:nrow(class2_scaled)
+class2_train <- class2_scaled %>% dplyr::sample_frac(0.7)
+class2_test  <- dplyr::anti_join(class2_scaled, class2_train, by = 'id')
+
+class3_scaled$id <- 1:nrow(class3_scaled)
+class3_train <- class3_scaled %>% dplyr::sample_frac(0.7)
+class3_test  <- dplyr::anti_join(class3_scaled, class3_train, by = 'id')
+
+class4_scaled$id <- 1:nrow(class4_scaled)
+class4_train <- class4_scaled %>% dplyr::sample_frac(0.7)
+class4_test  <- dplyr::anti_join(class4_scaled, class4_train, by = 'id')
+
+
+train_x1 <- as.matrix(class1_train[, !names(class1_train) %in% 'WinnerRed'])
+train_y1 <- class1_train$WinnerRed
+test_x1 <- as.matrix(class1_test[, !names(class1_test) %in% 'WinnerRed'])
+test_y1 <- class1_test$WinnerRed
+
+train_x2 <- as.matrix(class2_train[, !names(class2_train) %in% 'WinnerRed'])
+train_y2 <- class2_train$WinnerRed
+test_x2 <- as.matrix(class2_test[, !names(class2_test) %in% 'WinnerRed'])
+test_y2 <- class2_test$WinnerRed
+
+train_x3 <- as.matrix(class3_train[, !names(class3_train) %in% 'WinnerRed'])
+train_y3 <- class3_train$WinnerRed
+test_x3 <- as.matrix(class3_test[, !names(class3_test) %in% 'WinnerRed'])
+test_y3 <- class3_test$WinnerRed
+
+train_x4 <- as.matrix(class4_train[, !names(class4_train) %in% 'WinnerRed'])
+train_y4 <- class4_train$WinnerRed
+test_x4 <- as.matrix(class4_test[, !names(class4_test) %in% 'WinnerRed'])
+test_y4 <- class4_test$WinnerRed
+```
+
+use 70% of dataset as training set and 30% as test set. separate the response variable from the predictor variables
+
+
+#final model (class 1)
+```{r}
+library(glmnet)
+set.seed(2)
+
+alpha_values <- seq(0, 1, by = 0.1)
+cv_results1 <- lapply(alpha_values, function(alpha) {
+  cv.glmnet(train_x1, train_y1, alpha = alpha, family = "binomial", type.measure = "deviance")
+})
+
+best_cv1 <- sapply(cv_results1, function(cv) min(cv$cvm))
+best_alpha_index1 <- which.min(best_cv1)
+best_alpha1 <- alpha_values[best_alpha_index1]
+best_lambda1 <- cv_results1[[best_alpha_index1]]$lambda.min
+
+final_model1 <- glmnet(train_x1, train_y1, alpha = best_alpha1, lambda = best_lambda1, family = "binomial")
+
+predictions1 <- predict(final_model1, newx = test_x1, type = "response", s = best_lambda1)
+predicted_classes1 <- ifelse(predictions1 > 0.5, 1, 0)
+```
+
+```{r}
+library(e1071)
+
+conf_matrix1 <- confusionMatrix(as.factor(predicted_classes1), as.factor(test_y1))
+accuracy1 <- conf_matrix1$overall['Accuracy']
+precision1 <- conf_matrix1$byClass['Precision']
+recall1 <- conf_matrix1$byClass['Recall']
+F1_Score1 <- conf_matrix1$byClass['F1']
+
+accuracy1
+precision1
+recall1
+F1_Score1
+coef(final_model1, s = best_lambda1)
+```
+
+Now moving to models, perform cross-validation to find best lambda value. Will use to find the optimal lambda and alpha parameters. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. Run cross-validation for each alpha value to find the optimal lambda. Find the combination that gives the best performance (e.g., the lowest deviance). Fit the Elastic Net model using the optimal alpha and lambda values. Evaluate the model on test set to check its performance.
+
+Accuracy: proportion of the total number of predictions that were correct.
+Precision: ratio of correctly predicted positive observations to the total predicted positives.
+Recall (Sensitivity): ratio of correctly predicted positive observations to all observations in the actual class. 
+F1-Score: weighted average of Precision and Recall.
+
+Repeat with classes 2-4
+
+
+#final model (class 2)
+```{r}
+set.seed(2)
+
+alpha_values <- seq(0, 1, by = 0.1)
+cv_results2 <- lapply(alpha_values, function(alpha) {
+  cv.glmnet(train_x2, train_y2, alpha = alpha, family = "binomial", type.measure = "deviance")
+})
+
+best_cv2 <- sapply(cv_results2, function(cv) min(cv$cvm))
+best_alpha_index2 <- which.min(best_cv2)
+best_alpha2 <- alpha_values[best_alpha_index2]
+best_lambda2 <- cv_results2[[best_alpha_index2]]$lambda.min
+
+final_model2 <- glmnet(train_x2, train_y2, alpha = best_alpha2, lambda = best_lambda2, family = "binomial")
+
+predictions2 <- predict(final_model2, newx = test_x2, type = "response", s = best_lambda2)
+predicted_classes2 <- ifelse(predictions2 > 0.5, 1, 0)
+```
+
+```{r}
+conf_matrix2 <- confusionMatrix(as.factor(predicted_classes2), as.factor(test_y2))
+accuracy2 <- conf_matrix2$overall['Accuracy']
+precision2 <- conf_matrix2$byClass['Precision']
+recall2 <- conf_matrix2$byClass['Recall']
+F1_Score2 <- conf_matrix2$byClass['F1']
+
+accuracy2
+precision2
+recall2
+F1_Score2
+coef(final_model2, s = best_lambda2)
+```
+
+
+#final model (class 3)
+```{r}
+set.seed(2)
+
+alpha_values <- seq(0, 1, by = 0.1)
+cv_results3 <- lapply(alpha_values, function(alpha) {
+  cv.glmnet(train_x3, train_y3, alpha = alpha, family = "binomial", type.measure = "deviance")
+})
+
+best_cv3 <- sapply(cv_results3, function(cv) min(cv$cvm))
+best_alpha_index3 <- which.min(best_cv3)
+best_alpha3 <- alpha_values[best_alpha_index3]
+best_lambda3 <- cv_results3[[best_alpha_index3]]$lambda.min
+
+final_model3 <- glmnet(train_x3, train_y3, alpha = best_alpha3, lambda = best_lambda3, family = "binomial")
+
+predictions3 <- predict(final_model3, newx = test_x3, type = "response", s = best_lambda3)
+predicted_classes3 <- ifelse(predictions3 > 0.5, 1, 0)
+```
+
+```{r}
+conf_matrix3 <- confusionMatrix(as.factor(predicted_classes3), as.factor(test_y3))
+accuracy3 <- conf_matrix3$overall['Accuracy']
+precision3 <- conf_matrix3$byClass['Precision']
+recall3 <- conf_matrix3$byClass['Recall']
+F1_Score3 <- conf_matrix3$byClass['F1']
+
+accuracy3
+precision3
+recall3
+F1_Score3
+coef(final_model3, s = best_lambda3)
+```
+
+
+#final model (class 4)
+```{r}
+set.seed(2)
+
+alpha_values <- seq(0, 1, by = 0.1)
+cv_results4 <- lapply(alpha_values, function(alpha) {
+  cv.glmnet(train_x4, train_y4, alpha = alpha, family = "binomial", type.measure = "deviance")
+})
+
+best_cv4 <- sapply(cv_results4, function(cv) min(cv$cvm))
+best_alpha_index4 <- which.min(best_cv4)
+best_alpha4 <- alpha_values[best_alpha_index4]
+best_lambda4 <- cv_results4[[best_alpha_index4]]$lambda.min
+
+final_model4 <- glmnet(train_x4, train_y4, alpha = best_alpha4, lambda = best_lambda4, family = "binomial")
+
+predictions4 <- predict(final_model4, newx = test_x4, type = "response", s = best_lambda4)
+predicted_classes4 <- ifelse(predictions4 > 0.5, 1, 0)
+```
+
+```{r}
+conf_matrix4 <- confusionMatrix(as.factor(predicted_classes4), as.factor(test_y4))
+accuracy4 <- conf_matrix4$overall['Accuracy']
+precision4 <- conf_matrix4$byClass['Precision']
+recall4 <- conf_matrix4$byClass['Recall']
+F1_Score4 <- conf_matrix4$byClass['F1']
+
+accuracy4
+precision4
+recall4
+F1_Score4
+coef(final_model4, s = best_lambda4)
 ```
 
 
