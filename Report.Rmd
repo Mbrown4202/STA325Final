@@ -78,19 +78,33 @@ ggplot(data = year_freq, mapping = aes(x = year, y = count)) + geom_line() + lab
 ```
 
 ```{r}
+# Filtering for only men's fights and eliminating CatchWeight
 data2 <- data %>%
   filter(fight_gender == "men" & first_fight == "no" & weight_class != "CatchWeight")
 nrow(data2)
 ```
 
 
-#randomizing blue and red
-```{r}
-data2 <- data2 %>%
-  mutate(Winner2 = ifelse(Winner == "Red", R_fighter, B_fighter))
-```
+
 
 ```{r}
+#randomizing blue and red
+data2 <- data2 %>%
+  mutate(Winner2 = ifelse(Winner == "Red", R_fighter, B_fighter)) %>%
+  rename(B_avg_CTRL_time.seconds. = `B_avg_CTRL_time(seconds)`,
+         B_avg_opp_CTRL_time.seconds. = `B_avg_opp_CTRL_time(seconds)`,
+         B_total_time_fought.seconds. = `B_total_time_fought(seconds)`,
+         B_win_by_KO.TKO = `B_win_by_KO/TKO`,
+         R_avg_CTRL_time.seconds. = `R_avg_CTRL_time(seconds)`,
+         R_avg_opp_CTRL_time.seconds. = `R_avg_opp_CTRL_time(seconds)`,
+         R_total_time_fought.seconds. = `R_total_time_fought(seconds)`,
+         R_win_by_KO.TKO = `R_win_by_KO/TKO`)
+```
+
+
+
+```{r}
+set.seed(12)
 shuffle_fighters <- function(B_fighter, B_avg_KD, B_avg_opp_KD, B_avg_SIG_STR_pct, B_avg_opp_SIG_STR_pct,
                              B_avg_TD_pct,B_avg_opp_TD_pct, B_avg_SUB_ATT, 
                              B_avg_opp_SUB_ATT, B_avg_REV, B_avg_opp_REV, 
@@ -240,7 +254,9 @@ shuffle_fighters <- function(B_fighter, B_avg_KD, B_avg_opp_KD, B_avg_SIG_STR_pc
 }
 ```
 
+
 ```{r}
+set.seed(12)
 ufc_data_shuffled <- data2 %>%
   rowwise() %>%
   mutate(shuffled_data = list(shuffle_fighters(B_fighter, B_avg_KD, B_avg_opp_KD, B_avg_SIG_STR_pct,
@@ -299,7 +315,7 @@ ufc_data_shuffled <- data2 %>%
 
 
 ```{r}
-
+set.seed(12)
 ufc_data_shuffled <- ufc_data_shuffled %>%
   mutate(B_fighter = map_chr(shuffled_data, 1),
          B_avg_KD = map_chr(shuffled_data, 2),
@@ -442,10 +458,6 @@ ufc_data_shuffled <- ufc_data_shuffled %>%
 ```
 
 
-
-
-
-
 ```{r}
 ufc_data_shuffled <- ufc_data_shuffled %>%
   mutate(Winner = ifelse(Winner2 == R_fighter, "Red", "Blue"))
@@ -456,18 +468,17 @@ ufc_data_shuffled <- ufc_data_shuffled %>%
 ufc_data_shuffled <- ufc_data_shuffled %>%
   mutate_at(9:71, as.numeric) %>% 
   mutate_at(73:138, as.numeric) %>% 
-  mutate_at(140:144, as.numeric) 
-
-#Turning Winner into a factor
-ufc_data_shuffled$Winner <- as.factor(ufc_data_shuffled$Winner)
+  mutate_at(140:144, as.numeric)
 ```
-
 
 
 
 ```{r}
 #distribution of winner for each side
 ggplot(data = ufc_data_shuffled, aes(x = Winner, fill = Winner)) + geom_bar() + scale_fill_manual(values = c("blue", "red"))
+
+ufc_data_shuffled %>% group_by(Winner) %>% summarise(count = n())
+
 ```
 
 
@@ -527,19 +538,6 @@ kable(Ratt_class, caption = "Avg Attempt of Different Style Attacks", digits = 1
 ```
 
 
-
-```{r}
-# Removing Columns that will provide no meaning to our models
-ufc_data_shuffled_subsetted <-  ufc_data_shuffled[,!names(ufc_data_shuffled) %in% 
-                                 c("R_fighter", "B_fighter", "Referee", "location", "first_fight", "Winner2", "shuffled_data", "date", "fight_gender", "Referee")]
-
-rows_with_na <- ufc_data_shuffled_subsetted[!complete.cases(ufc_data_shuffled_subsetted), ]
-nrow(rows_with_na)
-
-# removing all N/A values
-ufc_data_shuffled_subsetted <- na.omit(ufc_data_shuffled_subsetted)
-
-```
 
 ## Inference EDA/make model
 
@@ -813,7 +811,7 @@ I will transform the categorical variables (including our response variable) int
 
 #create test and train datasets
 ```{r}
-set.seed(2)
+set.seed(12)
 class1_scaled$id <- 1:nrow(class1_scaled)
 class1_train <- class1_scaled %>% dplyr::sample_frac(0.7)
 class1_test  <- dplyr::anti_join(class1_scaled, class1_train, by = 'id')
@@ -858,7 +856,7 @@ use 70% of dataset as training set and 30% as test set. separate the response va
 #final model (class 1)
 ```{r}
 library(glmnet)
-set.seed(2)
+set.seed(12)
 
 alpha_values <- seq(0, 1, by = 0.1)
 cv_results1 <- lapply(alpha_values, function(alpha) {
@@ -904,7 +902,7 @@ Repeat with classes 2-4
 
 #final model (class 2)
 ```{r}
-set.seed(2)
+set.seed(12)
 
 alpha_values <- seq(0, 1, by = 0.1)
 cv_results2 <- lapply(alpha_values, function(alpha) {
@@ -939,7 +937,7 @@ coef(final_model2, s = best_lambda2)
 
 #final model (class 3)
 ```{r}
-set.seed(2)
+set.seed(12)
 
 alpha_values <- seq(0, 1, by = 0.1)
 cv_results3 <- lapply(alpha_values, function(alpha) {
@@ -974,7 +972,7 @@ coef(final_model3, s = best_lambda3)
 
 #final model (class 4)
 ```{r}
-set.seed(2)
+set.seed(12)
 
 alpha_values <- seq(0, 1, by = 0.1)
 cv_results4 <- lapply(alpha_values, function(alpha) {
@@ -1007,11 +1005,6 @@ coef(final_model4, s = best_lambda4)
 ```
 
 
-
-
-
-
-
-
+## Focusing on Predictive Accuracy
 
 
