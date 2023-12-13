@@ -1,10 +1,14 @@
 ---
 title: "Predicting UFC Fight Results"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
 date: "2023-12-11"
 ---
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, 
+                      fig.height = 4, 
+                      fig.width = 6)
 ```
 
 ```{r}
@@ -32,6 +36,11 @@ The purpose of our project is two-fold. We want to evaluate fighters' historical
 Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
 
 Our data is each UFC fight from 1993-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the amount of different types of attacks they have faced from their previous opponents. We plan to initially fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. From there, we plan to evaluate the inclusion of nonlinear effects within the most influential predictors in hopes to maximize predictive accuracy. 
+
+
+## Data Description and EDA
+
+The dataset used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. Using 
 
 ```{r}
 data %>%
