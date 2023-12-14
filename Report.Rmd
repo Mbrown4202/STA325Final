@@ -38,12 +38,14 @@ The purpose of our project is two-fold. We want to evaluate fighters' historical
 
 Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
 
-Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the amount of different types of attacks they have faced from their previous opponents. We plan to initially fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. The estimated probability values can be compared against the moneyline odds to determine value, and the significant coefficients can be used by trainers and coaches to adjust their fighter's strategies. 
+Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the frequency of different types of attacks they have faced from their previous opponents. We plan to fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. The estimated probability values can be compared against the moneyline odds to determine value, and the significant coefficients can be used by trainers and coaches to adjust their fighter's strategies. 
 
 
 ## Data Description and EDA
 
-The dataset used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. The dataset contains roughly 6,012 unique fights over a 27 year span, with each row containing data on fighters in the red and blue corner, a universal classification system used throughout all rows. The corner classification is the differentiating factor in providing each fighter's historical statistics. Since a given fighter could be in the red corner for one fight and in the blue corner for another, we don't place any value in the classification. 
+The dataset used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. The dataset contains roughly 6,012 unique fights over a 27 year span, with each row containing data on fighters in the red and blue corner, a universal classification system used throughout all rows. Since a given fighter could be in the red corner for one fight and in the blue corner for another, we don't place any value in the classification. The historical data for a given strike is split into four different columns. There is a separate column for the average amount of attempt and the average amount of strikes landed for a fighter's prior fight. Additionally, for that given strike there includes identical metrics for the averages of their prior opponents. For example, if Conor McGregor had one prior fight in which his opponent attempted 20 strikes to Conor's head and connected on 8, the row for Conor's second fight would display avg_opp_HEAD_att equal to 20 and avg_opp_HEAD_landed to 8.
+
+In the UFC, fighters can win in a variety of different ways. If both fighters are still standing at the end of the fighter, the judges will issue a decision that is either unanimous, split, or a majority decision. The dataset includes the amount of victories by each form of decision, as well as by knockout or by the on-hand doctor stopping the fight. Our dataset also provides the current winning or losing streak for each fighter, which can be useful as it can reflect the momentum and confidence a fighter may possess. 
 
 ```{r}
 #data %>% group_by(weight_class) %>% summarise(count = n())
@@ -53,8 +55,6 @@ The dataset used for modeling was initially sourced from ufcstats.com, where the
 data <- data %>%
   mutate(fight_gender = ifelse(weight_class %in% c("WomenBantamweight", "WomenFeatherweight", "WomenFlyweight",
                                              "WomenStrawweight"), "women", "men"))
-
-table(data$Winner)
 
 p1 <- ggplot(data = data, aes(x = fight_gender)) + geom_bar()
 p2 <- ggplot(data = data, aes(x = Winner)) + geom_bar()
@@ -1061,10 +1061,92 @@ kable(list(highest_R4_win, lowest_R4_win), digits = 3, caption = "Most Important
 test explanation for class 4 models
 
 
-## Focusing on Predictive Accuracy
-
-The elastic net models ran above indicate the most important predictors in determining a fight's winner within our weight class segmentation. Below we will explore including nonlinear and interaction effects to attempt to improve predictive accuracy. 
+ 
 
 
 
+## Appendix 
 
+
+### Data Dictionary 
+R_ and B_: Prefix signifies red and blue corner fighter stats respectively
+
+_opp_: Containing in columns is the action done by the opponent on the fighter
+
+fighter: Name of the fighter
+
+Referee: Referee/On-Hand Doctor of the fight. They are responsible for ending a fight if they believe a fighter is unable to continue
+
+date: Date of the fight 
+
+location: Location of the fight 
+
+Winner: The corner of the winning fighter. We will turn this into a dummy variable and will serve as our model's response variable
+
+title_bout: True/False indicator of a championship fight for a weightclass
+
+weight_class: Categorical variable indicating the division of the fight. There are nine male divisions and four female divisons. We will reassign the male divisons to create our models 
+
+KD: the number of knockdowns
+
+SIG_STR: the of significant strikes 'landed of attempted'
+
+SIG_STR_pct: significant strikes percentage
+
+TOTAL_STR: total strikes 'landed of attempted'
+
+TD: number of takedowns
+
+TD_pct: takedown percentages
+
+SUB_ATT: number of submission attempts
+
+REV: number of reversals landed
+
+HEAD: number significant strikes to the head (att = attempted, landed = successful attempts)
+
+BODY: number of significant strikes to the body (att = attempted, landed = successful attempts)
+
+LEG: number of significant strikes to the leg (att = attempted, landed = successful attempts)
+
+CLINCH: number of significant strikes in the clinch, also known as close quarters (att = attempted, landed = successful attempts)
+
+GROUND: number of significant strikes on the ground (att = attempted, landed = successful attempts)
+
+Stance: the stance of the fighter (orthodox, southpaw, etc.)
+
+Height_cms: the height of the fighter in centimeters
+
+Reach_cms: the reach of the fighter (arm span) in centimeters
+
+Weight_lbs: the weight of the fighter in pounds (lbs)
+
+age: the age of the fighter
+
+current_lose_streak: the amount of consecutive previous fights the fighter has lost (0 if they won their previous fight) 
+
+current_win_streak: the amount of consecutive previous fights the fighter has won (0 if they lost their previous fight) 
+
+draw: the number of draws in the fighter's ufc career
+
+wins: the number of wins in the fighter's ufc career
+
+losses: the number of losses in the fighter's ufc career
+
+total_rounds_fought: the average of total rounds fought by the fighter
+
+total_time_fought(seconds): the count of total time spent fighting in seconds
+
+total_title_bouts: the total number of title bouts taken part in by the fighter
+
+win_by_Decision_Majority: the number of wins by majority judges decision in the fighter's ufc career (often 2-0 with one judge deciding a draw)
+
+win_by_Decision_Split: the number of wins by split judges decision in the fighter's ufc career (often 2-1 in favor of one fighter)
+
+win_by_Decision_Unanimous: the number of wins by unanimous judges decision in the fighter's ufc career
+
+win_by_KO/TKO: the number of wins by knockout in the fighter's ufc career
+
+win_by_Submission: the number of wins by submission in the fighter's ufc career
+
+win_by_TKO_Doctor_Stoppage: the number of wins by doctor stoppage in the fighter's ufc career
