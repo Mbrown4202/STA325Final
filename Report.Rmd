@@ -6,9 +6,11 @@ output:
 date: "2023-12-11"
 ---
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, 
-                      fig.height = 4, 
-                      fig.width = 6)
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE, 
+                      warning = FALSE,
+                      fig.height = 3, 
+                      fig.width = 5)
 ```
 
 ```{r}
@@ -21,7 +23,7 @@ library(lubridate)
 library(purrr)
 library(randomForest)
 library(caret)
-library(missForest)
+library(patchwork)
 
 data <- read_csv("data.csv")
 ```
@@ -43,9 +45,7 @@ Our data is each UFC fight from 1994-2021, containing each fighter's names, phys
 The dataset used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. The dataset contains roughly 6,012 unique fights over a 27 year span, with each row containing data on fighters in the red and blue corner, a universal classification system used throughout all rows. The corner classification is the differentiating factor in providing each fighter's historical statistics. Since a given fighter could be in the red corner for one fight and in the blue corner for another, we don't place any value in the classification. 
 
 ```{r}
-data %>%
-  group_by(weight_class) %>%
-  summarise(count = n())
+#data %>% group_by(weight_class) %>% summarise(count = n())
 ```
 
 ```{r}
@@ -53,18 +53,30 @@ data <- data %>%
   mutate(fight_gender = ifelse(weight_class %in% c("WomenBantamweight", "WomenFeatherweight", "WomenFlyweight",
                                              "WomenStrawweight"), "women", "men"))
 
-ggplot(data = data, aes(x = fight_gender)) + geom_bar()
-ggplot(data = data, aes(x = Winner)) + geom_bar()
+table(data$Winner)
+
+p1 <- ggplot(data = data, aes(x = fight_gender)) + geom_bar()
+p2 <- ggplot(data = data, aes(x = Winner)) + geom_bar()
+
+p1 + p2
 ```
+
+
+The plots above provide a better idea on the breakdown of the amount of male and female fights in UFC's history, as well as the results based on which corner was victorious. Similar to men's and women's lacrosse or men's and women's soccer, we believe that men's and women's UFC fights should be considered different sports given the difference in fighting style. Men's MMA is centered around  wrestling, while women's MMA is centered around jiu-jitsu and judo with a strong preference for striking than grappling seen more commonly on the men's side. Since roughly 92% of the data are men's UFC fights, we will remove the observations in which the two fighters are female. The right plot above reveals that about 2/3 of fights with a winner are assigned to the red corner. Since the corners are simply a classifier and we are conerned that our models will be biased towards the red corner, we will randomize the fighters within each fight and reassign their corresponding statistics if necessary. 
+
+
 
 ```{r}
 data <- data %>%
   mutate(first_fight = ifelse(is.na(B_avg_KD) | is.na(R_avg_KD), "yes", "no"))
-ggplot(data = data, aes(x = first_fight)) + geom_bar()
+ggplot(data = data, aes(x = first_fight)) + geom_bar() + labs(title = "Calculating Instances of a Fighter's 1st Fight")
 ```
 
+Another limitation within our data is that for a fighter's first career UFC fight, they have no historical data and thus their respective columns are N/A in our dataset. Since our modeling techniques require clean data without missing data, we will need to remove instances of a fighter's first fight.
 
-```{r}
+
+
+```{r, eval = FALSE}
 data$date <- as.Date(data$date, format = "%m/%d/%y")
 
 # Extract year from the Date column
@@ -81,7 +93,7 @@ ggplot(data = year_freq, mapping = aes(x = year, y = count)) + geom_line() + lab
 # Filtering for only men's fights and eliminating CatchWeight
 data2 <- data %>%
   filter(fight_gender == "men" & first_fight == "no" & weight_class != "CatchWeight")
-nrow(data2)
+#nrow(data2)
 ```
 
 
@@ -475,12 +487,13 @@ ufc_data_shuffled <- ufc_data_shuffled %>%
 
 ```{r}
 #distribution of winner for each side
-ggplot(data = ufc_data_shuffled, aes(x = Winner, fill = Winner)) + geom_bar() + scale_fill_manual(values = c("blue", "red"))
+ggplot(data = ufc_data_shuffled, aes(x = Winner, fill = Winner)) + geom_bar() + scale_fill_manual(values = c("blue", "red")) + labs(title = "New Distribution of Blue & Red Winners", subtitle = "After Randomization of Classification")
 
-ufc_data_shuffled %>% group_by(Winner) %>% summarise(count = n())
+#ufc_data_shuffled %>% group_by(Winner) %>% summarise(count = n())
 
 ```
 
+After shuffling the data, we see a much more even distribution of fight winners between the red and blue corner. Similar to comparing the difference between men's and women's MMA, we believe the fighting styles begin to differ as fighters increase in weight class. Therefore, rather than creating nine different models for each class, we will group weight classes together as seen below: 
 
 
 
@@ -506,10 +519,12 @@ ufc_data_shuffled <- ufc_data_shuffled %>% mutate(new_class = case_when(weight_c
                                    weight_class == "OpenWeight" ~ "Class 4"))
 
 freq <- ufc_data_shuffled %>% group_by(new_class, weight_class) %>% 
-  summarize(weight = median(weight),
-            count = n()) %>% arrange(weight)
+  summarize(max_weight = max(weight),
+            count = n()) %>% arrange(max_weight)
 
 kable(freq, caption = "Frequency of Weight Class Fights")
+
+
 
 
 ```
@@ -523,6 +538,12 @@ ggplot(data=new_class_freq, aes(x=new_class, y=freq)) +
   theme_minimal() + labs(x = "New Class for Model Building", y = "Count", 
                          title = "Frequency Distribution of New Weight Classes")
 ```
+
+The plot above displays the new distribution of observations by the new weight classes. While we were unable to create a completely even split of observations, we believe we have enough fights within each weight class to proceed in fitting four models for each new subset. The table below shows the average attempts of different types of strikes for one classification of the fighters. We see that numbers tend to decrease for standing strikes such as the head, body, and leg as the weight class increases. This could be because heavier fighters prefer to spend more of the fight wrestling on the floor, or heavier fights typically lasting less time, with such cases not mutually exclusive. 
+
+
+
+
 
 ```{r}
 ## EDA that justifies splitting model by weight class 
@@ -1006,5 +1027,8 @@ coef(final_model4, s = best_lambda4)
 
 
 ## Focusing on Predictive Accuracy
+
+The elastic net models ran above indicate the most important predictors in determining a fight's winner within our weight class segmentation. Below we will explore including nonlinear and interaction effects to attempt to improve predictive accuracy with interpretability as less of a priority. 
+
 
 
