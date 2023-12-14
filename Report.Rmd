@@ -8,9 +8,7 @@ date: "2023-12-11"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE, 
-                      warning = FALSE,
-                      fig.height = 3, 
-                      fig.width = 5)
+                      warning = FALSE)
 ```
 
 ```{r}
@@ -38,7 +36,7 @@ The purpose of our project is two-fold. We want to evaluate fighters' historical
 
 Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
 
-Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the frequency of different types of attacks they have faced from their previous opponents. We plan to fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. The estimated probability values can be compared against the moneyline odds to determine value, and the significant coefficients can be used by trainers and coaches to adjust their fighter's strategies. 
+Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the frequency of different types of attacks they have faced from their previous opponents. We plan to fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. The estimated probability values can be compared against the moneyline odds to determine estimated value for sports bettors, and the significant coefficients can be used by trainers and coaches to adjust their fighter's strategies. 
 
 
 ## Data Description and EDA
@@ -559,10 +557,12 @@ kable(Ratt_class, caption = "Avg Attempt of Different Style Attacks", digits = 1
 
 
 
-## Inference EDA/make model
+## Methodology
 
-# Removing Columns that will provide no meaning to our models
+Before constructing our four models, we first want to remove variables within our dataset that are either redundant or will not provide useful information in predicting a winner. We will remove many of the multi-class variables, such as the red and blue fighter's names and the referee's name, that would significantly increase the complexity of our models. We will also remove the amount of draws a previous fighter has in their career as all rows equate to zero for both the red and blue fighters. Elastic net model creation requires that the data is clean and does not contain missing values. Although we removed many of the initial missing values for when it was a fighter's UFC debut, there are other cases in our dataset in which a fighter's age or reach is not recorded. We considered imputing the data using averages, but ultimately decided to remove these rows alltogther to avoid potential biases that may arise from imputation. We also believed our sample size was large enough to construct our models. 
+
 ```{r}
+# Removing Columns that will provide no meaning to our models
 ufc_data_shuffled_subsetted <-  ufc_data_shuffled[,!names(ufc_data_shuffled) %in% c("R_fighter", "B_fighter", "Referee",
                                                                                     "location", "first_fight", "Winner2",
                                                                                     "shuffled_data", "date", "fight_gender",
@@ -582,19 +582,11 @@ ufc_data_shuffled_subsetted <-  ufc_data_shuffled_subsetted[,!names(ufc_data_shu
                                                             %in% c("R_draw", "B_draw")]
 ```
 
-No draws. Going to remove this as well.
 
 
-# checking for NA values
+
 ```{r}
-any(is.na(ufc_data_shuffled_subsetted))
-sum(is.na(ufc_data_shuffled_subsetted))
-colSums(is.na(ufc_data_shuffled_subsetted))
-```
-
-
 # removing all rows with NA values
-```{r}
 ufc_data_shuffled_subsetted <- na.omit(ufc_data_shuffled_subsetted)
 
 nrow(ufc_data_shuffled)
@@ -603,8 +595,9 @@ nrow(ufc_data_shuffled) - nrow(ufc_data_shuffled_subsetted)
 ```
 
 
-# creating 4 different dataframes, dividing up by our weight class division
+
 ```{r}
+# creating 4 different dataframes, dividing up by our weight class division
 class1 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 1")
 class2 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 2")
 class3 <- ufc_data_shuffled_subsetted %>% filter(new_class == "Class 3")
@@ -615,15 +608,13 @@ class2 <-  class2[,!names(class2) %in% c("new_class")]
 class3 <-  class3[,!names(class3) %in% c("new_class")]
 class4 <-  class4[,!names(class4) %in% c("new_class")]
 
-nrow(class1)
-nrow(class2)
-nrow(class3)
-nrow(class4)
+
 ```
 
+To create the four separate models for the weight class segmentation, we have to create four separate data frames from which we can create training and test splits. Additionally, since the structure of our data set includes the number of attempts and successes for a given strike, as well as current win streak and overall wins on a fighter's record, we suspect that many potential predictors will be extremely multicollinear. To combat this, we plan to use ridge regression to introduce bias that can lower the variance of the estimates. However, since our models contain several predictors and ridge regression does not perform variable selection, we want to use lasso regression as well to assign estimates of irrelevant predictors to zero. The combination of both methods is called elastic net regression a regression model that includes both the L1 penalty of Lasso and the L2 penalty of Ridge regression. Elastic Net combines both L2 and L1 penalties of ridge regression and lasso. It controls the mixing of the two penalties through a parameter (lambda).
 
-#check multicollinearity
 ```{r}
+# check multicollinearity
 corr_data_class1 <- class1[sapply(class1, is.numeric)]
 corr_data_class1 <- corr_data_class1[, sapply(corr_data_class1, function(x) sd(x, na.rm = TRUE) > 0)]
 
@@ -645,7 +636,7 @@ extract_high_corr <- function(corr_data_class1, threshold = 0.7) {
   return(high_corr)
 }
 
-extract_high_corr(corr_data_class1, 0.7)
+#extract_high_corr(corr_data_class1, 0.95)
 ```
 
 ```{r}
@@ -670,7 +661,7 @@ extract_high_corr <- function(corr_data_class2, threshold = 0.7) {
   return(high_corr)
 }
 
-extract_high_corr(corr_data_class2, 0.7)
+#extract_high_corr(corr_data_class2, 0.7)
 ```
 
 ```{r}
@@ -695,7 +686,7 @@ extract_high_corr <- function(corr_data_class3, threshold = 0.7) {
   return(high_corr)
 }
 
-extract_high_corr(corr_data_class3, 0.7)
+#extract_high_corr(corr_data_class3, 0.7)
 ```
 
 ```{r}
@@ -720,19 +711,13 @@ extract_high_corr <- function(corr_data_class4, threshold = 0.7) {
   return(high_corr)
 }
 
-extract_high_corr(corr_data_class4, 0.7)
+#extract_high_corr(corr_data_class4, 0.7)
 ```
 
-There are so many predictor variables (over 100), we need to reduce that number. First, creating correlation matrix to identify variables that are highly correlated with each other. It would be much to visualize all combinations, so we will only extract high correlation combos (correlation > 0.7), for each class dataframe.
 
-over 180 combinations in every class have high correlation. A lot.
-
-Now need to deal with multicollinearity and perform variable selection. Will use ridge regression (to reduce multicollinearity) and lasso (to select varialbes). This is know as Elastic Net (linear regression model that includes both the L1 penalty of Lasso and the L2 penalty of Ridge regression). Elastic Net combines both L2 and L1 penalties of ridge regression and lasso. It controls the mixing of the two penalties through a parameter (lambda).
-
-
-#scale numerical predictors
 ```{r}
-names(class1)[sapply(class1, is.numeric)]
+# scaling numerical predictors
+#names(class1)[sapply(class1, is.numeric)]
 
 numerical_columns <- c("B_avg_KD", "B_avg_opp_KD", "B_avg_SIG_STR_pct",
                        "B_avg_opp_SIG_STR_pct", "B_avg_TD_pct", "B_avg_opp_TD_pct", "B_avg_SUB_ATT",
@@ -794,11 +779,8 @@ class4_scaled <- class4
 class4_scaled[, numerical_columns] <- scale(class4[, numerical_columns])
 ```
 
-I scaled the numerical predictors for each dataset because these techniques are sensitive to scale.
-
-
-#transform categorical predictors
 ```{r}
+# transform categorical predictors
 library(caret)
 
 dummies1 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class1_scaled)
@@ -826,11 +808,12 @@ class4_scaled <- cbind(class4_scaled[, !names(class4_scaled) %in% c('Winner',
 class4_scaled <-  class4_scaled[,!names(class4_scaled) %in% c("WinnerBlue")]
 ```
 
-I will transform the categorical variables (including our response variable) into numerical format so they can be used in Elastic Net. I will do this by using dummy variables. I am removing the additional dummy variable for the response, so it is only in the context of Red winning or losing (1 = Red win, 0 = Red lose).
+Since we plan to use elastic net that contain, we standardized the numerical predictors in our data. Elastic net also does not allow for multi-class categorical variables, so we need to transform the categorical variables (including our response variable) into numerical format so they can be used in Elastic Net. We can  do this by using dummy variables. We will not include a dummy variable indicating a Winner for the blue corner so our models are only in the context of Red winning or losing (1 = Red win, 0 = Red lose). Using a 70/30 training and test split, we can use cross validation to find the optimal lambda value to penalize our predictors and use lasso to perform variable selection. 
 
 
-#create test and train datasets
+
 ```{r}
+# create test and train datasets
 set.seed(12)
 class1_scaled$id <- 1:nrow(class1_scaled)
 class1_train <- class1_scaled %>% dplyr::sample_frac(0.7)
@@ -870,12 +853,10 @@ test_x4 <- as.matrix(class4_test[, !names(class4_test) %in% 'WinnerRed'])
 test_y4 <- class4_test$WinnerRed
 ```
 
-use 70% of dataset as training set and 30% as test set. separate the response variable from the predictor variables
 
 
-### final model (class 1)
 
-
+### Class 1 Model
 
 ```{r}
 library(glmnet)
@@ -919,17 +900,24 @@ kable(list(highest_R1_win, lowest_R1_win), digits = 3, caption = "Most Important
 ```
 
 
-Now moving to models, perform cross-validation to find best lambda value. Will use to find the optimal lambda and alpha parameters. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. Run cross-validation for each alpha value to find the optimal lambda. Find the combination that gives the best performance (e.g., the lowest deviance). Fit the Elastic Net model using the optimal alpha and lambda values. Evaluate the model on test set to check its performance.
+
+
+
+
+
+
+
+Now moving to models, we can perform cross-validation to find best lambda value. Will use to find the optimal lambda and alpha parameters. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. Run cross-validation for each alpha value to find the optimal lambda. Find the combination that gives the best performance (e.g., the lowest deviance). Fit the Elastic Net model using the optimal alpha and lambda values. Evaluate the model on test set to check its performance.
 
 Accuracy: proportion of the total number of predictions that were correct.
 Precision: ratio of correctly predicted positive observations to the total predicted positives.
 Recall (Sensitivity): ratio of correctly predicted positive observations to all observations in the actual class. 
 F1-Score: weighted average of Precision and Recall.
 
-Repeat with classes 2-4
 
 
-### final model (class 2)
+
+### Class 2 Model
 
 ```{r}
 set.seed(12)
@@ -975,7 +963,7 @@ kable(list(highest_R2_win, lowest_R2_win), digits = 3, caption = "Most Important
 Test explanation for class 2 models 
 
 
-### final model (class 3)
+### Class 3 Model 
 ```{r}
 set.seed(12)
 
@@ -1018,7 +1006,7 @@ kable(list(highest_R3_win, lowest_R3_win), digits = 3, caption = "Most Important
 test explanation for class 3 models 
 
 
-### final model (class 4)
+### Class 4 Model
 
 ```{r}
 set.seed(12)
@@ -1057,6 +1045,18 @@ lowest_R4_win <- model4_coef_df %>% arrange(s1) %>% head(8)
 kable(list(highest_R4_win, lowest_R4_win), digits = 3, caption = "Most Important Predictors for Class 4 Red Fighter") %>% kable_styling(latex_options = "hold_position")
 ```
 
+```{r}
+model4 <- glm(WinnerRed ~ B_avg_opp_KD + B_avg_opp_SIG_STR_pct + B_avg_opp_TD_pct + B_avg_REV +
+              B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + 
+                B_Reach_cms + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_GROUND_att + R_avg_opp_GROUND_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_StanceOrthodox, data = class4_train, family = "binomial")
+
+
+par(row = c(1, 1, 1, 1))
+plot(model4)
+```
+
+
+
 
 test explanation for class 4 models
 
@@ -1066,7 +1066,6 @@ test explanation for class 4 models
 
 
 ## Appendix 
-
 
 ### Data Dictionary 
 R_ and B_: Prefix signifies red and blue corner fighter stats respectively
@@ -1150,3 +1149,30 @@ win_by_KO/TKO: the number of wins by knockout in the fighter's ufc career
 win_by_Submission: the number of wins by submission in the fighter's ufc career
 
 win_by_TKO_Doctor_Stoppage: the number of wins by doctor stoppage in the fighter's ufc career
+
+
+### Full Models 
+
+```{r}
+model1_coef_df <- model1_coef_df %>% filter(s1 != 0)
+kable(model1_coef_df, caption = "Full Class 1 Standardized Coefficients", digits = 4)
+```
+
+```{r}
+model2_coef_df <- model2_coef_df %>% filter(s1 != 0)
+kable(model2_coef_df, caption = "Full Class 2 Standardized Coefficients", digits = 4)
+
+```
+
+```{r}
+model3_coef_df <- model3_coef_df %>% filter(s1 != 0)
+kable(model3_coef_df, caption = "Full Class 3 Standardized Coefficients", digits = 4)
+
+```
+
+```{r}
+model4_coef_df <- model4_coef_df %>% filter(s1 != 0)
+kable(model4_coef_df, caption = "Full Class 4 Standardized Coefficients", digits = 4)
+
+```
+
