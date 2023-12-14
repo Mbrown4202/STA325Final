@@ -255,3 +255,10 @@ rf.class2 <- randomForest(Winner~., ntree = 100, data = class2_train)
 class1_train$Winner
 ```
 
+
+```{r}
+first_class_model <- glm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_opp_REV + B_avg_TD_att + B_avg_opp_HEAD_landed + B_avg_opp_LEG_att + B_avg_CLINCH_att + B_losses + B_win_by_Decision_Majority + B_win_by_Decision_Split + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_TD_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_CLINCH_att + R_total_title_bouts + R_current_win_streak + R_losses + R_win_by_KO.TKO + R_Reach_cms + B_age + R_age + B_StanceSwitch, data = class1_train, family = "binomial")
+coef(first_class_model)
+```
+
+

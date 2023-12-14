@@ -24,6 +24,7 @@ library(purrr)
 library(randomForest)
 library(caret)
 library(patchwork)
+library(kableExtra)
 
 data <- read_csv("data.csv")
 ```
@@ -37,7 +38,7 @@ The purpose of our project is two-fold. We want to evaluate fighters' historical
 
 Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
 
-Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the amount of different types of attacks they have faced from their previous opponents. We plan to initially fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. From there, we plan to evaluate the inclusion of nonlinear effects within the most influential predictors in hopes to maximize predictive accuracy. 
+Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the amount of different types of attacks they have faced from their previous opponents. We plan to initially fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. The estimated probability values can be compared against the moneyline odds to determine value, and the significant coefficients can be used by trainers and coaches to adjust their fighter's strategies. 
 
 
 ## Data Description and EDA
@@ -92,7 +93,7 @@ ggplot(data = year_freq, mapping = aes(x = year, y = count)) + geom_line() + lab
 ```{r}
 # Filtering for only men's fights and eliminating CatchWeight
 data2 <- data %>%
-  filter(fight_gender == "men" & first_fight == "no" & weight_class != "CatchWeight")
+  filter(fight_gender == "men" & first_fight == "no" & weight_class != "CatchWeight" & Winner != "Draw")
 #nrow(data2)
 ```
 
@@ -539,9 +540,7 @@ ggplot(data=new_class_freq, aes(x=new_class, y=freq)) +
                          title = "Frequency Distribution of New Weight Classes")
 ```
 
-The plot above displays the new distribution of observations by the new weight classes. While we were unable to create a completely even split of observations, we believe we have enough fights within each weight class to proceed in fitting four models for each new subset. The table below shows the average attempts of different types of strikes for one classification of the fighters. We see that numbers tend to decrease for standing strikes such as the head, body, and leg as the weight class increases. This could be because heavier fighters prefer to spend more of the fight wrestling on the floor, or heavier fights typically lasting less time, with such cases not mutually exclusive. 
-
-
+The plot above displays the new distribution of observations by the new weight classes. While we were unable to create a completely even split of observations, we believe we have enough fights within each new segmentation to proceed in fitting four models. The table below shows the average attempts of different types of strikes for one classification of the fighters. We see that numbers tend to decrease for standing strikes such as the head, body, and leg as the weight class increases. This could be because heavier fighters prefer to spend more of the fight wrestling on the floor, or heavier fights typically lasting less time, with such cases not mutually exclusive. 
 
 
 
@@ -874,7 +873,10 @@ test_y4 <- class4_test$WinnerRed
 use 70% of dataset as training set and 30% as test set. separate the response variable from the predictor variables
 
 
-#final model (class 1)
+### final model (class 1)
+
+
+
 ```{r}
 library(glmnet)
 set.seed(12)
@@ -904,12 +906,18 @@ precision1 <- conf_matrix1$byClass['Precision']
 recall1 <- conf_matrix1$byClass['Recall']
 F1_Score1 <- conf_matrix1$byClass['F1']
 
-accuracy1
-precision1
-recall1
-F1_Score1
-coef(final_model1, s = best_lambda1)
+Class1_stats <- data.frame(Values = c(accuracy1, precision1, recall1, F1_Score1))
+kable(Class1_stats, digits = 3, caption = "Class 1 Model Stats") %>% kable_styling(latex_options = "hold_position")
 ```
+
+```{r}
+model1_coef <- coef(final_model1, s = best_lambda1)
+model1_coef_df <- as.data.frame(as.matrix(model1_coef))
+highest_R1_win <- model1_coef_df %>% arrange(desc(s1)) %>% head(8)
+lowest_R1_win <- model1_coef_df %>% arrange(s1) %>% head(8)
+kable(list(highest_R1_win, lowest_R1_win), digits = 3, caption = "Most Important Predictors for Class 1 Red Fighter") %>% kable_styling(latex_options = "hold_position")
+```
+
 
 Now moving to models, perform cross-validation to find best lambda value. Will use to find the optimal lambda and alpha parameters. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. Run cross-validation for each alpha value to find the optimal lambda. Find the combination that gives the best performance (e.g., the lowest deviance). Fit the Elastic Net model using the optimal alpha and lambda values. Evaluate the model on test set to check its performance.
 
@@ -921,7 +929,8 @@ F1-Score: weighted average of Precision and Recall.
 Repeat with classes 2-4
 
 
-#final model (class 2)
+### final model (class 2)
+
 ```{r}
 set.seed(12)
 
@@ -948,15 +957,25 @@ precision2 <- conf_matrix2$byClass['Precision']
 recall2 <- conf_matrix2$byClass['Recall']
 F1_Score2 <- conf_matrix2$byClass['F1']
 
-accuracy2
-precision2
-recall2
-F1_Score2
-coef(final_model2, s = best_lambda2)
+Class2_stats <- data.frame(Values = c(accuracy2, precision2, recall2, F1_Score2))
+kable(Class2_stats, digits = 3, caption = "Class 2 Model Stats") %>% kable_styling(latex_options = "hold_position")
+```
+
+```{r}
+model2_coef <- coef(final_model2, s = best_lambda2)
+model2_coef_df <- as.data.frame(as.matrix(model2_coef))
+highest_R2_win <- model2_coef_df %>% arrange(desc(s1)) %>% head(8)
+lowest_R2_win <- model2_coef_df %>% arrange(s1) %>% head(8)
+kable(list(highest_R2_win, lowest_R2_win), digits = 3, caption = "Most Important Predictors for Class 2 Red Fighter") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
-#final model (class 3)
+
+
+Test explanation for class 2 models 
+
+
+### final model (class 3)
 ```{r}
 set.seed(12)
 
@@ -983,15 +1002,24 @@ precision3 <- conf_matrix3$byClass['Precision']
 recall3 <- conf_matrix3$byClass['Recall']
 F1_Score3 <- conf_matrix3$byClass['F1']
 
-accuracy3
-precision3
-recall3
-F1_Score3
-coef(final_model3, s = best_lambda3)
+Class3_stats <- data.frame(Values = c(accuracy3, precision3, recall3, F1_Score3))
+kable(Class3_stats, digits = 3, caption = "Class 3 Model Stats") %>% kable_styling(latex_options = "hold_position") %>% kable_styling(latex_options = "hold_position")
+```
+
+```{r}
+model3_coef <- coef(final_model3, s = best_lambda3)
+model3_coef_df <- as.data.frame(as.matrix(model3_coef))
+highest_R3_win <- model3_coef_df %>% arrange(desc(s1)) %>% head(8)
+lowest_R3_win <- model3_coef_df %>% arrange(s1) %>% head(8)
+kable(list(highest_R3_win, lowest_R3_win), digits = 3, caption = "Most Important Predictors for Class 3 Red Fighter") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
-#final model (class 4)
+test explanation for class 3 models 
+
+
+### final model (class 4)
+
 ```{r}
 set.seed(12)
 
@@ -1017,18 +1045,26 @@ accuracy4 <- conf_matrix4$overall['Accuracy']
 precision4 <- conf_matrix4$byClass['Precision']
 recall4 <- conf_matrix4$byClass['Recall']
 F1_Score4 <- conf_matrix4$byClass['F1']
-
-accuracy4
-precision4
-recall4
-F1_Score4
-coef(final_model4, s = best_lambda4)
+Class4_stats <- data.frame(Values = c(accuracy4, precision4, recall4, F1_Score4))
+kable(Class4_stats, digits = 3, caption = "Class 4 Model Stats") %>% kable_styling(latex_options = "hold_position")
 ```
+
+```{r}
+model4_coef <- coef(final_model4, s = best_lambda4)
+model4_coef_df <- as.data.frame(as.matrix(model4_coef))
+highest_R4_win <- model4_coef_df %>% arrange(desc(s1)) %>% head(8)
+lowest_R4_win <- model4_coef_df %>% arrange(s1) %>% head(8)
+kable(list(highest_R4_win, lowest_R4_win), digits = 3, caption = "Most Important Predictors for Class 4 Red Fighter") %>% kable_styling(latex_options = "hold_position")
+```
+
+
+test explanation for class 4 models
 
 
 ## Focusing on Predictive Accuracy
 
-The elastic net models ran above indicate the most important predictors in determining a fight's winner within our weight class segmentation. Below we will explore including nonlinear and interaction effects to attempt to improve predictive accuracy with interpretability as less of a priority. 
+The elastic net models ran above indicate the most important predictors in determining a fight's winner within our weight class segmentation. Below we will explore including nonlinear and interaction effects to attempt to improve predictive accuracy. 
+
 
 
 
