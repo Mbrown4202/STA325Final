@@ -8,7 +8,9 @@ date: "2023-12-11"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE, 
-                      warning = FALSE)
+                      warning = FALSE, 
+                      fig.height = 3, 
+                      fig.width = 5)
 ```
 
 ```{r}
@@ -32,9 +34,7 @@ The UFC began as a professional mixed martial arts organization in 1993 serving 
 
 In many other North-american based sports, organizations have invested and founded their own analytics departments. These departments are responsible for using data to acquire and develop the right talent that will lead to on-field success and improve the team's product. Since the UFC's participants are individual fighters that often follow their own training regiment, there is a smaller focus on analytics within the sport.   
 
-The purpose of our project is two-fold. We want to evaluate fighters' historical data to determine fight styles that may posses a stronger correlation to sucess within the octagon. Identifying important factors will allow UFC fighters and their hired trainers to optimize their training regime, and will also benefit commentators in pointing out facets of the match the audience should keep in mind while spectating. 
-
-Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
+The purpose of our project is two-fold. We want to evaluate fighters' historical data to determine fight styles that may posses a stronger correlation to sucess within the octagon. Identifying important factors will allow UFC fighters and their hired trainers to optimize their training regime, and will also benefit commentators in pointing out facets of the match the audience should keep in mind while spectating. Additionally, we want to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
 
 Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the frequency of different types of attacks they have faced from their previous opponents. We plan to fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The elastic net model will be best served for UFC commentators and trainers interested in how prior fighting strategies can lead to success in the future. The estimated probability values can be compared against the moneyline odds to determine estimated value for sports bettors, and the significant coefficients can be used by trainers and coaches to adjust their fighter's strategies. 
 
@@ -589,9 +589,9 @@ ufc_data_shuffled_subsetted <-  ufc_data_shuffled_subsetted[,!names(ufc_data_shu
 # removing all rows with NA values
 ufc_data_shuffled_subsetted <- na.omit(ufc_data_shuffled_subsetted)
 
-nrow(ufc_data_shuffled)
-nrow(ufc_data_shuffled_subsetted)
-nrow(ufc_data_shuffled) - nrow(ufc_data_shuffled_subsetted)
+#nrow(ufc_data_shuffled)
+#nrow(ufc_data_shuffled_subsetted)
+#nrow(ufc_data_shuffled) - nrow(ufc_data_shuffled_subsetted)
 ```
 
 
@@ -661,7 +661,7 @@ extract_high_corr <- function(corr_data_class2, threshold = 0.7) {
   return(high_corr)
 }
 
-#extract_high_corr(corr_data_class2, 0.7)
+#extract_high_corr(corr_data_class2, 0.95)
 ```
 
 ```{r}
@@ -713,6 +713,14 @@ extract_high_corr <- function(corr_data_class4, threshold = 0.7) {
 
 #extract_high_corr(corr_data_class4, 0.7)
 ```
+
+In looking at the correlation coefficients between predictors for each class, we notice that coefficients for the same type of strike exceed 0.95 (such has avg strikes attempted and landed to the opponent's head). Correlation coefficients are also extremely high for significant strike predictors and other forms of strikes, such as head, body, and leg. Therefore, once we fit each of the models, we will also construct anova tables to determine if the inclusion of interactions amongst the selected variables help improve the model. 
+
+
+
+
+
+
 
 
 ```{r}
@@ -808,7 +816,12 @@ class4_scaled <- cbind(class4_scaled[, !names(class4_scaled) %in% c('Winner',
 class4_scaled <-  class4_scaled[,!names(class4_scaled) %in% c("WinnerBlue")]
 ```
 
-Since we plan to use elastic net that contain, we standardized the numerical predictors in our data. Elastic net also does not allow for multi-class categorical variables, so we need to transform the categorical variables (including our response variable) into numerical format so they can be used in Elastic Net. We can  do this by using dummy variables. We will not include a dummy variable indicating a Winner for the blue corner so our models are only in the context of Red winning or losing (1 = Red win, 0 = Red lose). Using a 70/30 training and test split, we can use cross validation to find the optimal lambda value to penalize our predictors and use lasso to perform variable selection. 
+Since we plan to use elastic net that contain, we standardized the numerical predictors in our data. Elastic net also does not allow for multi-class categorical variables, so we need to transform the categorical variables (including our response variable) into numerical format so they can be used in Elastic Net. We can  do this by using dummy variables. We will not include a dummy variable indicating a Winner for the blue corner so our models are only in the context of Red winning or losing (1 = Red win, 0 = Red lose). Using a 70/30 training and test split, we can use cross validation for each alpha value to find the optimal lambda. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. We will find the combination that gives the best performance (e.g., the lowest deviance), fit the elastic net model using the optimal alpha and lambda values, and finally evaluate the model on test set to check its performance.
+
+Accuracy: proportion of the total number of predictions that were correct.
+Precision: ratio of correctly predicted positive observations to the total predicted positives.
+Recall (Sensitivity): ratio of correctly predicted positive observations to all observations in the actual class. 
+F1-Score: weighted average of Precision and Recall.
 
 
 
@@ -862,7 +875,7 @@ test_y4 <- class4_test$WinnerRed
 library(glmnet)
 set.seed(12)
 
-alpha_values <- seq(0, 1, by = 0.1)
+alpha_values <- seq(.5, .9, by = 0.05)
 cv_results1 <- lapply(alpha_values, function(alpha) {
   cv.glmnet(train_x1, train_y1, alpha = alpha, family = "binomial", type.measure = "deviance")
 })
@@ -873,14 +886,25 @@ best_alpha1 <- alpha_values[best_alpha_index1]
 best_lambda1 <- cv_results1[[best_alpha_index1]]$lambda.min
 
 final_model1 <- glmnet(train_x1, train_y1, alpha = best_alpha1, lambda = best_lambda1, family = "binomial")
+coef(final_model1)
 
-predictions1 <- predict(final_model1, newx = test_x1, type = "response", s = best_lambda1)
-predicted_classes1 <- ifelse(predictions1 > 0.5, 1, 0)
+final_model1_base <- lm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_CLINCH_att + B_win_by_Decision_Majority + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_CLINCH_att + R_current_win_streak + B_age + R_age + B_StanceSwitch, family = "binomial", data = class1_train)
+
+final_model1_interactions <- lm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_CLINCH_att + B_win_by_Decision_Majority + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + poly(R_avg_SIG_STR_landed, 2) + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_CLINCH_att + R_current_win_streak + B_age + R_age + B_StanceSwitch + R_avg_REV*R_avg_SIG_STR_landed + R_avg_BODY_landed*R_avg_SIG_STR_landed + R_avg_opp_TD_pct*R_avg_opp_SIG_STR_pct, family = "binomial", data = class1_train)
+
+anova(final_model1_base, final_model1_interactions)
+
+# R Reversals and sig strikes landed
+# R body and sig strikes landed
+# R opp Takedown and R opp Sig Strikes
+#Avg Sig Strikes landed ^ 2 
 ```
 
 ```{r}
 library(e1071)
 
+predictions1 <- predict(final_model1, newx = test_x1, type = "response", s = best_lambda1)
+predicted_classes1 <- ifelse(predictions1 > 0.5, 1, 0)
 conf_matrix1 <- confusionMatrix(as.factor(predicted_classes1), as.factor(test_y1))
 accuracy1 <- conf_matrix1$overall['Accuracy']
 precision1 <- conf_matrix1$byClass['Precision']
@@ -901,28 +925,12 @@ kable(list(highest_R1_win, lowest_R1_win), digits = 3, caption = "Most Important
 
 
 
-
-
-
-
-
-
-Now moving to models, we can perform cross-validation to find best lambda value. Will use to find the optimal lambda and alpha parameters. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. Run cross-validation for each alpha value to find the optimal lambda. Find the combination that gives the best performance (e.g., the lowest deviance). Fit the Elastic Net model using the optimal alpha and lambda values. Evaluate the model on test set to check its performance.
-
-Accuracy: proportion of the total number of predictions that were correct.
-Precision: ratio of correctly predicted positive observations to the total predicted positives.
-Recall (Sensitivity): ratio of correctly predicted positive observations to all observations in the actual class. 
-F1-Score: weighted average of Precision and Recall.
-
-
-
-
 ### Class 2 Model
 
 ```{r}
 set.seed(12)
 
-alpha_values <- seq(0, 1, by = 0.1)
+alpha_values <- seq(.5, .9, by = 0.05)
 cv_results2 <- lapply(alpha_values, function(alpha) {
   cv.glmnet(train_x2, train_y2, alpha = alpha, family = "binomial", type.measure = "deviance")
 })
@@ -967,7 +975,7 @@ Test explanation for class 2 models
 ```{r}
 set.seed(12)
 
-alpha_values <- seq(0, 1, by = 0.1)
+alpha_values <- seq(.5, .9, by = 0.05)
 cv_results3 <- lapply(alpha_values, function(alpha) {
   cv.glmnet(train_x3, train_y3, alpha = alpha, family = "binomial", type.measure = "deviance")
 })
@@ -983,6 +991,8 @@ predictions3 <- predict(final_model3, newx = test_x3, type = "response", s = bes
 predicted_classes3 <- ifelse(predictions3 > 0.5, 1, 0)
 ```
 
+For class 3 the initial alpha value was zero, meaning the model was solely performing ridge regression and not removing any of our variables. 
+
 ```{r}
 conf_matrix3 <- confusionMatrix(as.factor(predicted_classes3), as.factor(test_y3))
 accuracy3 <- conf_matrix3$overall['Accuracy']
@@ -992,6 +1002,7 @@ F1_Score3 <- conf_matrix3$byClass['F1']
 
 Class3_stats <- data.frame(Values = c(accuracy3, precision3, recall3, F1_Score3))
 kable(Class3_stats, digits = 3, caption = "Class 3 Model Stats") %>% kable_styling(latex_options = "hold_position") %>% kable_styling(latex_options = "hold_position")
+
 ```
 
 ```{r}
@@ -1011,7 +1022,7 @@ test explanation for class 3 models
 ```{r}
 set.seed(12)
 
-alpha_values <- seq(0, 1, by = 0.1)
+alpha_values <- seq(.5, .9, by = 0.05)
 cv_results4 <- lapply(alpha_values, function(alpha) {
   cv.glmnet(train_x4, train_y4, alpha = alpha, family = "binomial", type.measure = "deviance")
 })
@@ -1043,16 +1054,6 @@ model4_coef_df <- as.data.frame(as.matrix(model4_coef))
 highest_R4_win <- model4_coef_df %>% arrange(desc(s1)) %>% head(8)
 lowest_R4_win <- model4_coef_df %>% arrange(s1) %>% head(8)
 kable(list(highest_R4_win, lowest_R4_win), digits = 3, caption = "Most Important Predictors for Class 4 Red Fighter") %>% kable_styling(latex_options = "hold_position")
-```
-
-```{r}
-model4 <- glm(WinnerRed ~ B_avg_opp_KD + B_avg_opp_SIG_STR_pct + B_avg_opp_TD_pct + B_avg_REV +
-              B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + 
-                B_Reach_cms + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_GROUND_att + R_avg_opp_GROUND_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_StanceOrthodox, data = class4_train, family = "binomial")
-
-
-par(row = c(1, 1, 1, 1))
-plot(model4)
 ```
 
 
@@ -1158,6 +1159,18 @@ model1_coef_df <- model1_coef_df %>% filter(s1 != 0)
 kable(model1_coef_df, caption = "Full Class 1 Standardized Coefficients", digits = 4)
 ```
 
+
+```{r}
+full_model_1 <- lm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_opp_REV+ B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_opp_LEG_att + B_avg_CLINCH_att + B_losses + B_win_by_Decision_Majority + B_win_by_Decision_Split + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_TD_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_CLINCH_att + R_total_title_bouts + R_current_win_streak + R_losses + R_win_by_KO.TKO + R_Reach_cms + B_age + R_age + B_StanceSwitch, family = "binomial", data = class1_train)
+
+par(row = c(1, 1, 1, 1))
+plot(full_model_1)
+```
+
+
+
+
+
 ```{r}
 model2_coef_df <- model2_coef_df %>% filter(s1 != 0)
 kable(model2_coef_df, caption = "Full Class 2 Standardized Coefficients", digits = 4)
@@ -1176,3 +1189,31 @@ kable(model4_coef_df, caption = "Full Class 4 Standardized Coefficients", digits
 
 ```
 
+```{r}
+model4 <- glm(WinnerRed ~ B_avg_opp_KD + B_avg_opp_SIG_STR_pct + B_avg_opp_TD_pct + B_avg_REV +
+              B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + 
+                B_Reach_cms + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_GROUND_att + R_avg_opp_GROUND_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_StanceOrthodox, data = class4_train, family = "binomial")
+
+
+
+full_logistic_model_4 <- glm(WinnerRed ~ ., data = class4_train, family = "binomial")
+
+
+full_predictions4 <- predict(full_logistic_model_4, newdata = class4_test, type = "response")
+full_predicted_classes4 <- ifelse(full_predictions4 > 0.5, 1, 0)
+```
+
+```{r}
+conf_matrix4 <- confusionMatrix(as.factor(full_predicted_classes4), as.factor(class4_test$WinnerRed))
+accuracy4 <- conf_matrix4$overall['Accuracy']
+precision4 <- conf_matrix4$byClass['Precision']
+recall4 <- conf_matrix4$byClass['Recall']
+F1_Score4 <- conf_matrix4$byClass['F1']
+accuracy4
+precision4
+recall4
+F1_Score4
+
+par(row = c(1, 1, 1, 1))
+plot(model4)
+```
