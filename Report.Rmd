@@ -72,7 +72,7 @@ p1 + p2
 
 The plots above provide a better idea on the breakdown of the amount of male and female fights in UFC's history, as well as the results based on which corner was victorious. Similar to men's and women's lacrosse or men's and women's soccer, we believe that men's and women's UFC fights should be considered different sports given the difference in fighting style. Men's MMA is centered around  wrestling, while women's MMA is centered around jiu-jitsu and judo with a strong preference for striking than grappling seen more commonly on the men's side. Since roughly 92% of the data are men's UFC fights, we will remove the observations in which the two fighters are female. The right plot above reveals that about 2/3 of fights with a winner are assigned to the red corner. Since the corners are simply a classifier and we are conerned that our models will be biased towards the red corner, we will randomize the fighters within each fight and reassign their corresponding statistics if necessary. 
 
-
+Another limitation within our data is that for a fighter's first career UFC fight, they have no historical data and thus their respective columns are N/A in our dataset. Since our modeling techniques require clean data without missing data, we will need to remove instances of a fighter's first fight.
 
 ```{r}
 data <- data %>%
@@ -80,7 +80,7 @@ data <- data %>%
 ggplot(data = data, aes(x = first_fight)) + geom_bar() + labs(title = "Calculating Instances of a Fighter's 1st Fight")
 ```
 
-Another limitation within our data is that for a fighter's first career UFC fight, they have no historical data and thus their respective columns are N/A in our dataset. Since our modeling techniques require clean data without missing data, we will need to remove instances of a fighter's first fight.
+
 
 
 
@@ -494,8 +494,8 @@ ufc_data_shuffled <- ufc_data_shuffled %>%
 
 
 ```{r}
-ufc_data_shuffled %>% group_by(R_Stance) %>% summarize(count = n())
-ufc_data_shuffled %>% group_by(B_Stance) %>% summarize(count = n())
+#ufc_data_shuffled %>% group_by(R_Stance) %>% summarize(count = n())
+#ufc_data_shuffled %>% group_by(B_Stance) %>% summarize(count = n())
 ```
 
 
@@ -988,7 +988,7 @@ For class 1 our optimal alpha value is 0.55, which results in the variable selec
 
 ```{r}
 bestsub_final_model1_base <- regsubsets(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_CLINCH_att + B_win_by_Decision_Majority + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_CLINCH_att + R_win_by_KO.TKO + R_current_win_streak + B_age + B_age + B_StanceSwitch, data = class1train_scaled, nvmax = 23)
-which.min(summary(bestsub_final_model1_base)$bic)
+#which.min(summary(bestsub_final_model1_base)$bic)
 #coef(bestsub_final_model1_base, 5)
 
 model_1_best_subset <- glm(WinnerRed ~ B_win_by_Decision_Unanimous + R_avg_opp_SIG_STR_pct + R_avg_SIG_STR_landed + R_current_win_streak + B_age, data = class1train_scaled, family = "binomial")
@@ -1057,19 +1057,20 @@ final_model2_interactions <- glm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_S
 # r avg head landed and r avg sig strike pct 
 # Enhanced R_avg_Head_landed and R_avg_opp_CLINCH_att to the 2nd power and it was significant!!!!
 ```
-For class 2, we calculated an optimal alpha value of 0.65 which resulted in the variable selection of 29 predictors. We then used likelihood ratio tests to explore the inclusion of interactions and quadratic effects and discovered that including the quadratic effect for R_avg_HEAD_landed and R_avg_opp_CLINCH_att would be significant (at a \alpha = 0.05 level) for our model. We then looked at the VIF values of our model and determined that none needed to be removed due to the potential presence of significant multicollinearity. Similar to class 1, we chose the 14 predictors that were statistically significant within the elastic net model to test if such reduction would improve the model's predictive accuracy. Unlike the class 1 model, such reduction decreased our model's predictive accuracy. Finally, we used best subset on the elastic net model in which the BIC value was minimized with 8 predictors. However, the full elastic net model still had the best predictive accuracy, so we will proceed with it as our final model.
+
+For class 2, we calculated an optimal alpha value of 0.65 which resulted in the variable selection of 29 predictors. We then used likelihood ratio tests to explore the inclusion of interactions and quadratic effects and discovered that including the quadratic effect for R_avg_HEAD_landed and R_avg_opp_CLINCH_att would be significant (at an alpha = 0.05 level) for our model. We then looked at the VIF values of our model and determined that none needed to be removed due to the potential presence of significant multicollinearity. Similar to class 1, we chose the 14 predictors that were statistically significant within the elastic net model to test if such reduction would improve the model's predictive accuracy. Unlike the class 1 model, such reduction decreased our model's predictive accuracy. Finally, we used best subset on the elastic net model in which the BIC value was minimized with 8 predictors. However, the full elastic net model still had the best predictive accuracy, so we will proceed with it as our final model.
 
 
 ```{r}
-predictions2 <- predict(final_model2_interactions, newdata = class2test_scaled, type = "response")
-predicted_classes2 <- ifelse(predictions2 > 0.5, 1, 0)
-conf_matrix2 <- confusionMatrix(as.factor(predicted_classes2), as.factor(test_y2))
-accuracy2 <- conf_matrix2$overall['Accuracy']
-precision2 <- conf_matrix2$byClass['Precision']
-recall2 <- conf_matrix2$byClass['Recall']
-F1_Score2 <- conf_matrix2$byClass['F1']
+predictions2_int <- predict(final_model2_interactions, newdata = class2test_scaled, type = "response")
+predicted_classes2_int <- ifelse(predictions2_int > 0.5, 1, 0)
+conf_matrix2_int <- confusionMatrix(as.factor(predicted_classes2_int), as.factor(test_y2))
+accuracy2_int <- conf_matrix2_int$overall['Accuracy']
+precision2_int <- conf_matrix2_int$byClass['Precision']
+recall2_int <- conf_matrix2_int$byClass['Recall']
+F1_Score2_int <- conf_matrix2_int$byClass['F1']
 
-Class2_stats <- data.frame(Values = c(accuracy2, precision2, recall2, F1_Score2))
+Class2_int_stats <- data.frame(Values = c(accuracy2_int, precision2_int, recall2_int, F1_Score2_int))
 # Move this to results
 #kable(Class2_stats, digits = 3, caption = "Class 2 Elastic Net Model Stats") %>% kable_styling(latex_options = "hold_position")
 ```
@@ -1092,8 +1093,13 @@ $$B_{22} * R\_avg\_opp\_CTRL\_time.seconds. + B_{23} * R\_current\_win\_streak +
 $$B_{25} * R\_win\_by\_Decision\_Split + B_{26} * R\_win\_by\_Decision\_Unanimous + B_{27} * R\_win\_by\_Submission$$
 $$ B_{28} * B\_age + B_{29} * R\_age + B_{30} * B\_StanceOrthodox + B_{31} * B\_StanceSouthpaw$$
 
+The model above results in a 0.64 AUC value, which shows improvement compared to class 1, yet has room for improvement. We will continue to monitor how the AUC values change based on the class used to construct the model. 
+
+
+
 
 #### Class 3 Model 
+
 ```{r}
 set.seed(12)
 
@@ -1108,7 +1114,6 @@ best_alpha3 <- alpha_values[best_alpha_index3]
 best_lambda3 <- cv_results3[[best_alpha_index3]]$lambda.min
 
 final_model3 <- glmnet(train_x3, train_y3, alpha = best_alpha3, lambda = best_lambda3, family = "binomial")
-coef(final_model3)
 
 predictions3 <- predict(final_model3, newx = test_x3, type = "response", s = best_lambda3)
 predicted_classes3 <- ifelse(predictions3 > 0.5, 1, 0)
@@ -1124,9 +1129,35 @@ final_model3_interactions <- glm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_T
 # R_Reach_cms*R_avg_SIG_STR_pct
 ```
 
+Our optimal alpha value of 0.85 resulted in the variable selection of 46 predictors. Using contextual knowledge, we again considered the inclusion of various interactions and discovered that the interaction of B_avg_GROUND_att and B_avg_CTRL_time.seconds., and R_avg_BODY_landed and R_avg_SIG_STR_pct improved our model through the likelihood ratio test. With these interactions included, we then took the 22 terms with a p-value less than 0.1 and compared the model accuracy measures. The full elastic net model provided better accuracy results, so we finally compared the model against the BIC backwards selection subsetted model as best subset was not computationally possible starting with a high number of predictors. While the BIC backwards selection model resulted in only six significant predictors, the full elastic net model was still more accurate on the test data. Given our biggest priority is predictive accuracy, the full elastic model is our final selection. 
+
+
+
+
 ```{r}
 final_model3_interactions_vif <- glm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_REV + B_avg_SIG_STR_landed + B_avg_opp_TOTAL_STR_landed + B_avg_TD_att + B_avg_opp_TD_att + B_avg_LEG_landed + B_avg_opp_LEG_att + B_avg_opp_CLINCH_landed + B_avg_GROUND_att + B_avg_opp_GROUND_landed + B_avg_CTRL_time.seconds. + B_current_win_streak + B_current_lose_streak + B_longest_win_streak + B_win_by_Decision_Split + B_win_by_Decision_Unanimous + B_win_by_TKO_Doctor_Stoppage + B_Height_cms + B_Reach_cms + B_Weight_lbs + R_avg_KD + R_avg_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_opp_TOTAL_STR_landed + R_avg_TD_landed + R_avg_opp_TD_att + R_avg_opp_HEAD_att + R_avg_BODY_landed + R_avg_opp_LEG_att + R_longest_win_streak + R_losses + R_win_by_Decision_Split + R_win_by_KO.TKO + R_Height_cms + R_Reach_cms + R_age + B_StanceOpenStance + B_StanceOrthodox + R_StanceSouthpaw + R_StanceSwitch + B_avg_GROUND_att*B_avg_CTRL_time.seconds. + R_avg_BODY_landed*R_avg_SIG_STR_pct, data = class3train_scaled, family = "binomial")
 ```
+
+$$log(P(Winner = Red)/1-P(Winner = Red)) = B_0 + B_1 * B\_avg\_opp\_SIG\_STR\_pct + $$
+$$B_2 * B\_avg\_opp\_TD\_pct + B_3 * B\_avg\_REV + B_4 * B\_avg\_opp\_REV + B_5 * B\_avg\_SIG\_STR\_landed$$
+
+$$B_6 * B\_avg\_opp\_TOTAL\_STR\_landed + B_7 * B\_avg\_TD\_att + B_8 * B\_avg\_opp\_TD\_att + B_9 * B\_avg\_LEG\_landed$$
+$$B_{10} * B\_avg\_opp\_LEG\_att + B_{11} * B\_avg\_opp\_CLINCH\_landed + B_{12} * B\_avg\_GROUND\_att$$
+$$B_{13} * B\_avg\_opp\_GROUND\_landed + B_{14} * B\_avg\_opp\_GROUND\_landed + $$
+$$B_{15} * B\_avg\_CTRL\_time.seconds. + B_{16} * B\_current\_win\_streak + $$
+$$B_{17} * B\_current\_lose\_streak + B_{18} * B\_longest\_win\_streak + B_{19} * B\_win\_by\_Decision\_Split +$$
+$$B_{20} * B\_win\_by\_Decision\_Unanimous + B_{21} * B\_win\_by\_TKO\_Doctor\_Stoppage + $$
+$$B_{22} * B\_Height\_cms + B_{23} * B\_Reach\_cms + B_{24} * B\_Weight\_lbs + B_{25} * R\_avg\_KD +$$
+$$B_{26} * R\_avg\_SIG\_STR\_pct + B_{27} * R\_avg\_opp\_TD\_pct + B_{28} * R\_avg\_opp\_SUB\_ATT + $$
+$$B_{29} * R\_avg\_REV + B_{30} * R\_avg\_opp\_TOTAL\_STR\_landed + B_{31} * R\_avg\_TD\_landed + $$ 
+$$B_{32} * R\_avg\_opp\_TD\_att + B_{33} * R\_avg\_opp\_HEAD\_att + B_{34} * R\_avg\_BODY\_landed + $$ 
+$$B_{35} * R\_avg\_opp\_LEG\_att + B_{36} * R\_longest\_win\_streak + B_{37} * R\_losses + $$ 
+$$B_{38} * R\_win\_by\_Decision\_Split + B_{39} * R\_win\_by\_KO.TKO + B_{40} * R\_Height\_cms +$$
+$$B_{41} * R\_Reach\_cms + B_{42} * R\_age + B_{43} * B\_StanceOpenStance  + $$ 
+$$B_{44} * B\_StanceOrthodox + B_{45} * R\_StanceSouthpaw +  B_{46} * R\_StanceSwitch + $$
+$$B_{47} * B\_avg\_GROUND\_att*B\_avg\_CTRL\_time.seconds. + B_{48} * R\_avg\_BODY\_landed*R\_avg\_SIG\_STR\_pct$$
+
+The model above provides an AUC value of 0.59, which is approximately similar to classes 1 and 2. It is becoming more conclusive that we are unable to reach a significantly high value due to the variability within fight winners that is explained outside the data provided regardless of the classification threshold we set. 
 
 
 
@@ -1141,39 +1172,7 @@ F1_Score3_int_vif <- conf_matrix3_int_vif$byClass['F1']
 
 Class3_int_vif_stats <- data.frame(Values = c(accuracy3_int_vif, precision3_int_vif, recall3_int_vif, F1_Score3_int_vif))
 # Move this to results
-kable(Class3_int_vif_stats, digits = 3, caption = "Class 2 Elastic Net Model Stats") %>% kable_styling(latex_options = "hold_position")
-```
-
-
-```{r}
-final_model3_simplified <- glm(WinnerRed ~ B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_TOTAL_STR_landed + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_LEG_att + B_win_by_Decision_Split + B_Height_cms + B_Reach_cms + B_Weight_lbs + R_avg_KD + R_avg_TD_landed + R_avg_opp_TD_att + R_avg_opp_HEAD_att + R_age + R_StanceSwitch + B_avg_GROUND_att + B_avg_CTRL_time.seconds. + R_avg_SIG_STR_pct + R_avg_BODY_landed + B_avg_GROUND_att*B_avg_CTRL_time.seconds. + R_avg_SIG_STR_pct:R_avg_BODY_landed, data = class3train_scaled, family = "binomial")
-```
-
-```{r}
-bestsub_final_model3_interactions_vif <- regsubsets(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_REV + B_avg_SIG_STR_landed + B_avg_opp_TOTAL_STR_landed + B_avg_TD_att + B_avg_opp_TD_att + B_avg_LEG_landed + B_avg_opp_LEG_att + B_avg_opp_CLINCH_landed + B_avg_GROUND_att + B_avg_opp_GROUND_landed + B_avg_CTRL_time.seconds. + B_current_win_streak + B_current_lose_streak + B_longest_win_streak + B_win_by_Decision_Split + B_win_by_Decision_Unanimous + B_win_by_TKO_Doctor_Stoppage + B_Height_cms + B_Reach_cms + B_Weight_lbs + R_avg_KD + R_avg_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_opp_TOTAL_STR_landed + R_avg_TD_landed + R_avg_opp_TD_att + R_avg_opp_HEAD_att + R_avg_BODY_landed + R_avg_opp_LEG_att + R_longest_win_streak + R_losses + R_win_by_Decision_Split + R_win_by_KO.TKO + R_Height_cms + R_Reach_cms + R_age + B_StanceOpenStance + B_StanceOrthodox + R_StanceSouthpaw + R_StanceSwitch + B_avg_GROUND_att*B_avg_CTRL_time.seconds. + R_avg_BODY_landed*R_avg_SIG_STR_pct, data = class3train_scaled, nvmax = 47)
-coef(bestsub_final_model3_interactions_vif, which.min(summary(bestsub_final_model3_interactions_vif)$bic))
-
-model_3_best_subset <- glm(WinnerRed ~ B_avg_TD_landed + B_win_by_Submission + poly(R_avg_HEAD_landed, 2) + R_longest_win_streak + R_win_by_Decision_Split + B_age + R_age, data = class2train_scaled, family = "binomial")
-
-
-
-
-predictions2_bss <- predict(model_2_best_subset, newdata = class2test_scaled, type = "response")
-predicted_classes2_bss <- ifelse(predictions2_bss > 0.5, 1, 0)
-conf_matrix2_bss <- confusionMatrix(as.factor(predicted_classes2_bss), as.factor(test_y2))
-accuracy2_bss <- conf_matrix2_bss$overall['Accuracy']
-precision2_bss <- conf_matrix2_bss$byClass['Precision']
-recall2_bss <- conf_matrix2_bss$byClass['Recall']
-F1_Score2_bss <- conf_matrix2_bss$byClass['F1']
-
-Class2_stats_bss <- data.frame(Values = c(accuracy2_bss, precision2_bss, recall2_bss, F1_Score2_bss))
-
-kable(Class2_stats_bss, digits = 3, caption = "Class 2 Elastic Net --> Best Subset Model Stats") %>% kable_styling(latex_options = "hold_position")
-``
-
-
-
-
+kable(Class3_int_vif_stats, digits = 3, caption = "Class 3 Elastic Net Model Stats") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
@@ -1189,7 +1188,6 @@ lowest_R3_win <- model3_coef_df %>% arrange(s1) %>% head(8)
 ```
 
 
-test explanation for class 3 models 
 
 
 ### Class 4 Model
@@ -1434,7 +1432,7 @@ kable(Class2_stats_bss, digits = 3, caption = "Class 2 Elastic Net --> Best Subs
 
 ### Model 2 Diagnostics
 ```{r model 2 diagnostics}
-roc_2 <- roc(class2test_scaled$WinnerRed, predictions2)
+roc_2 <- roc(class2test_scaled$WinnerRed, predictions2_int)
 # Plot the ROC curve
 plot(roc_2, main = "ROC Curve for the Class 2
      Logistic Regression Model")
@@ -1467,6 +1465,11 @@ lowest_R2_win <- model2_coef_df %>% arrange(s1) %>% head(8)
 
 
 ### Class 3 Other Model Accuracy Measures
+
+```{r}
+final_model3_simplified <- glm(WinnerRed ~ B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_TOTAL_STR_landed + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_LEG_att + B_win_by_Decision_Split + B_Height_cms + B_Reach_cms + B_Weight_lbs + R_avg_KD + R_avg_TD_landed + R_avg_opp_TD_att + R_avg_opp_HEAD_att + R_age + R_StanceSwitch + B_avg_GROUND_att + B_avg_CTRL_time.seconds. + R_avg_SIG_STR_pct + R_avg_BODY_landed + B_avg_GROUND_att*B_avg_CTRL_time.seconds. + R_avg_SIG_STR_pct:R_avg_BODY_landed, data = class3train_scaled, family = "binomial")
+```
+
 ```{r}
 predictions3_simplified <- predict(final_model3_simplified, newdata = class3test_scaled, type = "response")
 predicted_classes3_sim <- ifelse(predictions3_simplified > 0.5, 1, 0)
@@ -1479,4 +1482,37 @@ F1_Score3_sim <- conf_matrix3_sim$byClass['F1']
 Class3_sim_stats <- data.frame(Values = c(accuracy3_sim, precision3_sim, recall3_sim, F1_Score3_sim))
 # Move this to results
 kable(Class3_sim_stats, digits = 3, caption = "Class 2 Elastic Net --> P-Val Simplified Model Stats") %>% kable_styling(latex_options = "hold_position")
+```
+
+
+```{r}
+final_model3_backbic <- step(final_model3_interactions_vif, trace = 0, k = log(nrow(class3train_scaled)), direction = "backward")
+
+summary(final_model3_backbic)
+
+predictions3_backbic <- predict(final_model3_backbic, newdata = class3test_scaled, type = "response")
+predicted_classes3_backbic <- ifelse(predictions3_backbic > 0.5, 1, 0)
+conf_matrix3_backbic <- confusionMatrix(as.factor(predicted_classes3_backbic), as.factor(test_y3))
+accuracy3_backbic <- conf_matrix3_backbic$overall['Accuracy']
+precision3_backbic <- conf_matrix3_backbic$byClass['Precision']
+recall3_backbic <- conf_matrix3_backbic$byClass['Recall']
+F1_Score3_backbic <- conf_matrix3_backbic$byClass['F1']
+
+Class3_stats_backbic <- data.frame(Values = c(accuracy3_backbic, precision3_backbic, recall3_backbic, F1_Score3_backbic))
+
+kable(Class3_stats_backbic, digits = 3, caption = "Class 3 Elastic Net --> Backwards BIC Model Stats") %>% kable_styling(latex_options = "hold_position")
+
+```
+
+### Model 3 Diagnostics
+```{r model 3 diagnostics}
+roc_3 <- roc(class3test_scaled$WinnerRed, predictions3_interactions_vif)
+# Plot the ROC curve
+plot(roc_3, main = "ROC Curve for the Class 3
+     Logistic Regression Model")
+abline(0, 1, lty = 2, col = "gray")  # Add a reference line for a random classifier
+
+# Calculate the AUC
+auc_value_3 <- auc(roc_3)
+cat("AUC:", auc_value_3, "\n")
 ```
