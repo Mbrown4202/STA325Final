@@ -1072,7 +1072,7 @@ F1_Score2_int <- conf_matrix2_int$byClass['F1']
 
 Class2_int_stats <- data.frame(Values = c(accuracy2_int, precision2_int, recall2_int, F1_Score2_int))
 # Move this to results
-#kable(Class2_stats, digits = 3, caption = "Class 2 Elastic Net Model Stats") %>% kable_styling(latex_options = "hold_position")
+#kable(Class2_stats, digits = 3, caption = "Class 2 Elastic Net Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
@@ -1172,7 +1172,7 @@ F1_Score3_int_vif <- conf_matrix3_int_vif$byClass['F1']
 
 Class3_int_vif_stats <- data.frame(Values = c(accuracy3_int_vif, precision3_int_vif, recall3_int_vif, F1_Score3_int_vif))
 # Move this to results
-kable(Class3_int_vif_stats, digits = 3, caption = "Class 3 Elastic Net Model Stats") %>% kable_styling(latex_options = "hold_position")
+kable(Class3_int_vif_stats, digits = 3, caption = "Class 3 Elastic Net Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
@@ -1206,36 +1206,51 @@ best_alpha4 <- alpha_values[best_alpha_index4]
 best_lambda4 <- cv_results4[[best_alpha_index4]]$lambda.min
 
 final_model4 <- glmnet(train_x4, train_y4, alpha = best_alpha4, lambda = best_lambda4, family = "binomial")
-
-predictions4 <- predict(final_model4, newx = test_x4, type = "response", s = best_lambda4)
-predicted_classes4 <- ifelse(predictions4 > 0.5, 1, 0)
 ```
 
-```{r, eval = FALSE}
-conf_matrix4 <- confusionMatrix(as.factor(predicted_classes4), as.factor(test_y4))
-accuracy4 <- conf_matrix4$overall['Accuracy']
-precision4 <- conf_matrix4$byClass['Precision']
-recall4 <- conf_matrix4$byClass['Recall']
-F1_Score4 <- conf_matrix4$byClass['F1']
-Class4_stats <- data.frame(Values = c(accuracy4, precision4, recall4, F1_Score4))
-kable(Class4_stats, digits = 3, caption = "Class 4 Model Stats") %>% kable_styling(latex_options = "hold_position")
+For class 4, the optimal alpha value was 0.1, resulting in a variable selection with 19 predictors. Using likelihood ratio tests, we found strong significance in including the quadratic effect for B_avg_opp_SIG_STR_pct, or how well Red's current opponent has defended against significant strikes, and the interaction between B_avg_REV and B_avg_opp_REV, which are the average amount of reversals Red's current opponent, Blue, has landed and received from their prior opponents. In evaluating the vif values of this model, we noticed that R_avg_opp_LEG_att and R_avg_opp_LEG_landed each had a generalized value greater than 5, which we deemed was large enough to remove from the model. From there, we selected the seven predictors that were statistically significant and compared the accuracy measures to the full elastic net model. The full elastic net model with the interactions and the quadratic effect included performed better on the test data. Finally, we used best subset and created a new model with the three predictors chosen from the elastic net model. Once again, the elastic net model performed better in predictive accuracy, thus selecting it as our final model to proceed. 
+
+
+$$B_0 + B_1 * B\_avg\_opp\_KD + B_2 * B\_avg\_opp\_SIG\_STR\_pct + B_3 * B\_avg\_opp\_SIG\_STR\_pct^2 + $$
+$$B_4 * B\_avg\_opp\_TD\_pct + B_5 * B\_avg\_REV + B_6 * B\_avg\_opp\_REV + B_7 * B\_losses + $$
+$$B_8 * B\_win\_by\_Decision\_Majority + B_9 * B\_win\_by\_Submission + B_{10} * B\_Reach\_cms + $$
+$$B_{11} * R\_avg\_opp\_TOTAL\_STR\_landed + B_{12} * R\_avg\_opp\_LEG\_att + B_{13} * R\_avg\_opp\_LEG\_landed + $$
+$$B_{14} * R\_win\_by\_Decision\_Majority + B_{15} * R\_win\_by\_TKO\_Doctor\_Stoppage + B_{16} * B\_age + $$
+$$B_{17} * B\_StanceOrthodox + B_{18} * {B\_StanceSouthpaw} + B_{19} * B\_avg\_REV*B\_avg\_opp\_REV$$
+
+The AUC value for the model above is 0.63, similar to the prior AUC values calculated in the models for the other classes. 
+
+
+
+```{r}
+final_model4_base <- glm(WinnerRed ~ B_avg_opp_KD + poly(B_avg_opp_SIG_STR_pct,2) + B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + B_Reach_cms + R_avg_opp_TOTAL_STR_landed + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_GROUND_att + R_avg_opp_GROUND_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_age + B_StanceOrthodox + B_StanceSouthpaw + B_avg_REV*B_avg_opp_REV, data = class4train_scaled, family = "binomial")
+
+final_model4_interactions <- glm(WinnerRed ~ B_avg_opp_KD + poly(B_avg_opp_SIG_STR_pct,2) + B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + B_Reach_cms + R_avg_opp_TOTAL_STR_landed + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_GROUND_att + R_avg_opp_GROUND_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_age + B_StanceOrthodox + B_StanceSouthpaw + B_avg_REV *B_avg_opp_REV, data = class4train_scaled, family = "binomial")
+
+
+#anova(final_model4_base, final_model4_interactions, test = "LRT")
 ```
 
-```{r, eval = FALSE}
-model4_coef <- coef(final_model4, s = best_lambda4)
-model4_coef_df <- as.data.frame(as.matrix(model4_coef))
-highest_R4_win <- model4_coef_df %>% arrange(desc(s1)) %>% head(8)
-lowest_R4_win <- model4_coef_df %>% arrange(s1) %>% head(8)
-kable(list(highest_R4_win, lowest_R4_win), digits = 3, caption = "Most Important Predictors for Class 4 Red Fighter") %>% kable_styling(latex_options = "hold_position")
+```{r}
+final_model4_interactions_vif <- glm(WinnerRed ~ B_avg_opp_KD + poly(B_avg_opp_SIG_STR_pct,2) + B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + B_Reach_cms + R_avg_opp_TOTAL_STR_landed + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_age + B_StanceOrthodox + B_StanceSouthpaw + B_avg_REV*B_avg_opp_REV, data = class4train_scaled, family = "binomial")
 ```
 
 
 
+```{r}
+predictions4_int_vif <- predict(final_model4_interactions_vif, newdata = class4test_scaled, type = "response")
+predicted_classes4_int_vif <- ifelse(predictions4_int_vif > 0.5, 1, 0)
+conf_matrix4_int_vif <- confusionMatrix(as.factor(predicted_classes4_int_vif), as.factor(test_y4))
+accuracy4_int_vif <- conf_matrix4_int_vif$overall['Accuracy']
+precision4_int_vif <- conf_matrix4_int_vif$byClass['Precision']
+recall4_int_vif <- conf_matrix4_int_vif$byClass['Recall']
+F1_Score4_int_vif <- conf_matrix4_int_vif$byClass['F1']
+Class4_int_vif_stats <- data.frame(Values = c(accuracy4_int_vif, precision4_int_vif, recall4_int_vif, F1_Score4_int_vif))
+kable(Class4_int_vif_stats, digits = 3, caption = "Class 4 Elastic Net Model Accuracy") %>% kable_styling(latex_options = "hold_position")
+```
 
-test explanation for class 4 models
 
 
- 
 
 
 
@@ -1345,7 +1360,7 @@ F1_Score1 <- conf_matrix1$byClass['F1']
 
 
 Class1_stats <- data.frame(Values = c(accuracy1, precision1, recall1, F1_Score1))
-kable(Class1_stats, digits = 3, caption = "Class 1 Elastic Net Model Stats") %>% kable_styling(latex_options = "hold_position")
+kable(Class1_stats, digits = 3, caption = "Class 1 Elastic Net Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 ```
 
 ```{r}
@@ -1360,7 +1375,7 @@ F1_Score1_bss <- conf_matrix1_bss$byClass['F1']
 
 
 Class1_stats_bss <- data.frame(Values = c(accuracy1_bss, precision1_bss, recall1_bss, F1_Score1_bss))
-kable(Class1_stats_bss, digits = 3, caption = "Class 1 Elastic Net --> Best Subset Model Stats") %>% kable_styling(latex_options = "hold_position")
+kable(Class1_stats_bss, digits = 3, caption = "Class 1 Elastic Net --> Best Subset Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
@@ -1425,12 +1440,13 @@ F1_Score2_bss <- conf_matrix2_bss$byClass['F1']
 
 Class2_stats_bss <- data.frame(Values = c(accuracy2_bss, precision2_bss, recall2_bss, F1_Score2_bss))
 
-kable(Class2_stats_bss, digits = 3, caption = "Class 2 Elastic Net --> Best Subset Model Stats") %>% kable_styling(latex_options = "hold_position")
+kable(Class2_stats_bss, digits = 3, caption = "Class 2 Elastic Net --> Best Subset Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
 
 ### Model 2 Diagnostics
+
 ```{r model 2 diagnostics}
 roc_2 <- roc(class2test_scaled$WinnerRed, predictions2_int)
 # Plot the ROC curve
@@ -1452,18 +1468,6 @@ kable(vif(final_model3_interactions), caption = "VIF Values for Class 3 Elastic 
 ```
 
 
-
-
-```{r}
-# Bring back up if model is large
-model2_coef <- coef(final_model2, s = best_lambda2)
-model2_coef_df <- as.data.frame(as.matrix(model2_coef))
-highest_R2_win <- model2_coef_df %>% arrange(desc(s1)) %>% head(8)
-lowest_R2_win <- model2_coef_df %>% arrange(s1) %>% head(8)
-#kable(list(highest_R2_win, lowest_R2_win), digits = 3, caption = "Most Important Predictors for Class 2 Red Fighter") %>% kable_styling(latex_options = "hold_position")
-```
-
-
 ### Class 3 Other Model Accuracy Measures
 
 ```{r}
@@ -1481,7 +1485,7 @@ F1_Score3_sim <- conf_matrix3_sim$byClass['F1']
 
 Class3_sim_stats <- data.frame(Values = c(accuracy3_sim, precision3_sim, recall3_sim, F1_Score3_sim))
 # Move this to results
-kable(Class3_sim_stats, digits = 3, caption = "Class 2 Elastic Net --> P-Val Simplified Model Stats") %>% kable_styling(latex_options = "hold_position")
+kable(Class3_sim_stats, digits = 3, caption = "Class 2 Elastic Net --> P-Val Simplified Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 ```
 
 
@@ -1500,7 +1504,7 @@ F1_Score3_backbic <- conf_matrix3_backbic$byClass['F1']
 
 Class3_stats_backbic <- data.frame(Values = c(accuracy3_backbic, precision3_backbic, recall3_backbic, F1_Score3_backbic))
 
-kable(Class3_stats_backbic, digits = 3, caption = "Class 3 Elastic Net --> Backwards BIC Model Stats") %>% kable_styling(latex_options = "hold_position")
+kable(Class3_stats_backbic, digits = 3, caption = "Class 3 Elastic Net --> Backwards BIC Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 
 ```
 
@@ -1516,3 +1520,89 @@ abline(0, 1, lty = 2, col = "gray")  # Add a reference line for a random classif
 auc_value_3 <- auc(roc_3)
 cat("AUC:", auc_value_3, "\n")
 ```
+
+
+### Class 4 Model VIF Values
+
+```{r}
+kable(vif(final_model4_interactions), caption = "VIF Values for Class 4 Elastic Net Model", digits = 2) %>% kable_styling(latex_options = "hold_position")
+```
+
+
+
+### Class 4 Other Model Accuracy Measures 
+
+```{r}
+final_model4_simplified <- glm(WinnerRed ~ poly(B_avg_opp_SIG_STR_pct, 2) + B_avg_REV + B_Reach_cms + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_avg_REV:B_avg_opp_REV, data = class4train_scaled, family = "binomial")
+
+
+
+
+predictions4_sim <- predict(final_model4_simplified, newdata = class4test_scaled, type = "response")
+predicted_classes4_sim <- ifelse(predictions4_sim > 0.5, 1, 0)
+conf_matrix4_sim <- confusionMatrix(as.factor(predicted_classes4_sim), as.factor(test_y4))
+accuracy4_sim <- conf_matrix4_sim$overall['Accuracy']
+precision4_sim <- conf_matrix4_sim$byClass['Precision']
+recall4_sim <- conf_matrix4_sim$byClass['Recall']
+F1_Score4_sim <- conf_matrix4_sim$byClass['F1']
+Class4_sim_stats <- data.frame(Values = c(accuracy4_sim, precision4_sim, recall4_sim, F1_Score4_sim))
+kable(Class4_sim_stats, digits = 3, caption = "Class 4 Elastic Net --> Sig. P-Value Model Accuracy") %>% kable_styling(latex_options = "hold_position")
+```
+
+
+
+
+```{r}
+bestsub_final_model4 <- regsubsets(WinnerRed ~ B_avg_opp_KD + poly(B_avg_opp_SIG_STR_pct,2) + B_avg_opp_TD_pct + B_avg_REV + B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + B_Reach_cms + R_avg_opp_TOTAL_STR_landed + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_age + B_StanceOrthodox + B_StanceSouthpaw + B_avg_REV*B_avg_opp_REV, data = class4train_scaled, nvmax = 19)
+#which.min(summary(bestsub_final_model4)$bic)
+
+
+final_model4_bss <- glm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_Reach_cms + R_avg_opp_LEG_landed , data = class4train_scaled, family = "binomial")
+predictions4_bss <- predict(final_model4_bss, newdata = class4test_scaled, type = "response")
+predicted_classes4_bss <- ifelse(predictions4_bss > 0.5, 1, 0)
+conf_matrix4_bss <- confusionMatrix(as.factor(predicted_classes4_bss), as.factor(test_y4))
+accuracy4_bss <- conf_matrix4_bss$overall['Accuracy']
+precision4_bss <- conf_matrix4_bss$byClass['Precision']
+recall4_bss <- conf_matrix4_bss$byClass['Recall']
+F1_Score4_bss <- conf_matrix4_bss$byClass['F1']
+Class4_bss_stats <- data.frame(Values = c(accuracy4_bss, precision4_bss, recall4_bss, F1_Score4_bss))
+kable(Class4_bss_stats, digits = 3, caption = "Class 4 Elastic Net --> Best Subset Selection") %>% kable_styling(latex_options = "hold_position")
+```
+
+### Model 4 Diagnostics
+
+```{r model 4 diagnostics}
+roc_4 <- roc(class4test_scaled$WinnerRed, predictions4_int_vif)
+# Plot the ROC curve
+plot(roc_4, main = "ROC Curve for the Class 3
+     Logistic Regression Model")
+abline(0, 1, lty = 2, col = "gray")  # Add a reference line for a random classifier
+
+# Calculate the AUC
+auc_value_4 <- auc(roc_4)
+cat("AUC:", auc_value_4, "\n")
+```
+
+
+
+
+### Spare code for future recall
+
+```{r}
+# Bring back up if model is large
+model2_coef <- coef(final_model2, s = best_lambda2)
+model2_coef_df <- as.data.frame(as.matrix(model2_coef))
+highest_R2_win <- model2_coef_df %>% arrange(desc(s1)) %>% head(8)
+lowest_R2_win <- model2_coef_df %>% arrange(s1) %>% head(8)
+#kable(list(highest_R2_win, lowest_R2_win), digits = 3, caption = "Most Important Predictors for Class 2 Red Fighter") %>% kable_styling(latex_options = "hold_position")
+```
+
+```{r, eval = FALSE}
+# bring back up if needed
+model4_coef <- coef(final_model4, s = best_lambda4)
+model4_coef_df <- as.data.frame(as.matrix(model4_coef))
+highest_R4_win <- model4_coef_df %>% arrange(desc(s1)) %>% head(8)
+lowest_R4_win <- model4_coef_df %>% arrange(s1) %>% head(8)
+#kable(list(highest_R4_win, lowest_R4_win), digits = 3, caption = "Most Important Predictors for Class 4 Red Fighter") %>% kable_styling(latex_options = "hold_position")
+```
+
