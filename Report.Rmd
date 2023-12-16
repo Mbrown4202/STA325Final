@@ -25,6 +25,8 @@ library(randomForest)
 library(caret)
 library(patchwork)
 library(kableExtra)
+library(car)
+library(pROC)
 
 data <- read_csv("data.csv")
 ```
@@ -569,7 +571,7 @@ ufc_data_shuffled_subsetted <-  ufc_data_shuffled[,!names(ufc_data_shuffled) %in
                                                                                     "year", "weight", "weight_class")]
 ```
 
-```{r}
+```{r, eval = FALSE}
 ufc_data_shuffled_subsetted  %>%
   group_by(R_draw) %>%
   summarise(count = n())
@@ -661,7 +663,7 @@ extract_high_corr <- function(corr_data_class2, threshold = 0.7) {
   return(high_corr)
 }
 
-#extract_high_corr(corr_data_class2, 0.95)
+#extract_high_corr(corr_data_class2, 0.8)
 ```
 
 ```{r}
@@ -718,6 +720,24 @@ In looking at the correlation coefficients between predictors for each class, we
 
 
 
+```{r}
+set.seed(12)
+class1$id <- 1:nrow(class1)
+class1_train <- class1 %>% dplyr::sample_frac(0.7)
+class1_test  <- dplyr::anti_join(class1, class1_train, by = 'id')
+
+class2$id <- 1:nrow(class2)
+class2_train <- class2 %>% dplyr::sample_frac(0.7)
+class2_test  <- dplyr::anti_join(class2, class2_train, by = 'id')
+
+class3$id <- 1:nrow(class3)
+class3_train <- class3 %>% dplyr::sample_frac(0.7)
+class3_test  <- dplyr::anti_join(class3, class3_train, by = 'id')
+
+class4$id <- 1:nrow(class4)
+class4_train <- class4 %>% dplyr::sample_frac(0.7)
+class4_test  <- dplyr::anti_join(class4, class4_train, by = 'id')
+```
 
 
 
@@ -774,49 +794,114 @@ numerical_columns <- c("B_avg_KD", "B_avg_opp_KD", "B_avg_SIG_STR_pct",
                        "R_win_by_Decision_Unanimous", "R_win_by_KO.TKO", "R_win_by_Submission",
                        "R_win_by_TKO_Doctor_Stoppage", "R_Height_cms", "R_Reach_cms", "R_Weight_lbs", "R_age")
 
-class1_scaled <- class1
-class1_scaled[, numerical_columns] <- scale(class1[, numerical_columns])
 
-class2_scaled <- class2
-class2_scaled[, numerical_columns] <- scale(class2[, numerical_columns])
+# Calculate mean and standard deviation on the training data
+class1train_means <- colMeans(class1_train[, numerical_columns])
+class1train_sds <- apply(class1_train[, numerical_columns], 2, sd)
 
-class3_scaled <- class3
-class3_scaled[, numerical_columns] <- scale(class3[, numerical_columns])
+class1train_scaled <- class1_train
+class1train_scaled[, numerical_columns] <- scale(class1train_scaled[, numerical_columns], center = class1train_means, scale = class1train_sds)
 
-class4_scaled <- class4
-class4_scaled[, numerical_columns] <- scale(class4[, numerical_columns])
+class1test_scaled <- class1_test
+class1test_scaled[, numerical_columns] <- scale(class1test_scaled[, numerical_columns], center = class1train_means, scale = class1train_sds)
+
+
+
+
+class2train_means <- colMeans(class2_train[, numerical_columns])
+class2train_sds <- apply(class2_train[, numerical_columns], 2, sd)
+
+class2train_scaled <- class2_train
+class2train_scaled[, numerical_columns] <- scale(class2train_scaled[, numerical_columns], center = class2train_means, scale = class2train_sds)
+
+class2test_scaled <- class2_test
+class2test_scaled[, numerical_columns] <- scale(class2test_scaled[, numerical_columns], center = class2train_means, scale = class2train_sds)
+
+
+
+
+class3train_means <- colMeans(class3_train[, numerical_columns])
+class3train_sds <- apply(class3_train[, numerical_columns], 2, sd)
+
+class3train_scaled <- class3_train
+class3train_scaled[, numerical_columns] <- scale(class3train_scaled[, numerical_columns], center = class3train_means, scale = class3train_sds)
+
+class3test_scaled <- class3_test
+class3test_scaled[, numerical_columns] <- scale(class3test_scaled[, numerical_columns], center = class3train_means, scale = class3train_sds)
+
+
+
+
+class4train_means <- colMeans(class4_train[, numerical_columns])
+class4train_sds <- apply(class4_train[, numerical_columns], 2, sd)
+
+class4train_scaled <- class4_train
+class4train_scaled[, numerical_columns] <- scale(class4train_scaled[, numerical_columns], center = class4train_means, scale = class4train_sds)
+
+class4test_scaled <- class4_test
+class4test_scaled[, numerical_columns] <- scale(class4test_scaled[, numerical_columns], center = class4train_means, scale = class4train_sds)
 ```
 
 ```{r}
 # transform categorical predictors
 library(caret)
 
-dummies1 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class1_scaled)
-dummy_data1 <- predict(dummies1, newdata = class1_scaled)
-class1_scaled <- cbind(class1_scaled[, !names(class1_scaled) %in% c('Winner', 
+dummies1train <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class1train_scaled)
+dummy_data1 <- predict(dummies1train, newdata = class1train_scaled)
+class1train_scaled <- cbind(class1train_scaled[, !names(class1train_scaled) %in% c('Winner', 
                                                                     'title_bout', 'B_Stance', 'R_Stance')], dummy_data1)
-class1_scaled <-  class1_scaled[,!names(class1_scaled) %in% c("WinnerBlue")]
+class1train_scaled <-  class1train_scaled[,!names(class1train_scaled) %in% c("WinnerBlue")]
 
-dummies2 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class2_scaled)
-dummy_data2 <- predict(dummies2, newdata = class2_scaled)
-class2_scaled <- cbind(class2_scaled[, !names(class2_scaled) %in% c('Winner',
+dummies1test <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class1test_scaled)
+dummy_data1 <- predict(dummies1test, newdata = class1test_scaled)
+class1test_scaled <- cbind(class1test_scaled[, !names(class1test_scaled) %in% c('Winner', 
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data1)
+class1test_scaled <-  class1test_scaled[,!names(class1test_scaled) %in% c("WinnerBlue")]
+
+
+
+dummies2train <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class2train_scaled)
+dummy_data2 <- predict(dummies2train, newdata = class2train_scaled)
+class2train_scaled <- cbind(class2train_scaled[, !names(class2train_scaled) %in% c('Winner', 
                                                                     'title_bout', 'B_Stance', 'R_Stance')], dummy_data2)
-class2_scaled <-  class2_scaled[,!names(class2_scaled) %in% c("WinnerBlue")]
+class2train_scaled <-  class2train_scaled[,!names(class2train_scaled) %in% c("WinnerBlue")]
 
-dummies3 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class3_scaled)
-dummy_data3 <- predict(dummies3, newdata = class3_scaled)
-class3_scaled <- cbind(class3_scaled[, !names(class3_scaled) %in% c('Winner',
+dummies2test <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class2test_scaled)
+dummy_data2 <- predict(dummies2test, newdata = class2test_scaled)
+class2test_scaled <- cbind(class2test_scaled[, !names(class2test_scaled) %in% c('Winner', 
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data2)
+class2test_scaled <-  class2test_scaled[,!names(class2test_scaled) %in% c("WinnerBlue")]
+
+
+
+dummies3train <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class3train_scaled)
+dummy_data3 <- predict(dummies3train, newdata = class3train_scaled)
+class3train_scaled <- cbind(class3train_scaled[, !names(class3train_scaled) %in% c('Winner', 
                                                                     'title_bout', 'B_Stance', 'R_Stance')], dummy_data3)
-class3_scaled <-  class3_scaled[,!names(class3_scaled) %in% c("WinnerBlue")]
+class3train_scaled <-  class3train_scaled[,!names(class3train_scaled) %in% c("WinnerBlue")]
 
-dummies4 <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class4_scaled)
-dummy_data4 <- predict(dummies4, newdata = class4_scaled)
-class4_scaled <- cbind(class4_scaled[, !names(class4_scaled) %in% c('Winner',
+dummies3test <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class3test_scaled)
+dummy_data3 <- predict(dummies3test, newdata = class3test_scaled)
+class3test_scaled <- cbind(class3test_scaled[, !names(class3test_scaled) %in% c('Winner', 
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data3)
+class3test_scaled <-  class3test_scaled[,!names(class3test_scaled) %in% c("WinnerBlue")]
+
+
+
+dummies4train <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class4train_scaled)
+dummy_data4 <- predict(dummies4train, newdata = class4train_scaled)
+class4train_scaled <- cbind(class4train_scaled[, !names(class4train_scaled) %in% c('Winner', 
                                                                     'title_bout', 'B_Stance', 'R_Stance')], dummy_data4)
-class4_scaled <-  class4_scaled[,!names(class4_scaled) %in% c("WinnerBlue")]
+class4train_scaled <-  class4train_scaled[,!names(class4train_scaled) %in% c("WinnerBlue")]
+
+dummies4test <- dummyVars(~ Winner + title_bout + B_Stance + R_Stance, data = class4test_scaled)
+dummy_data4 <- predict(dummies4test, newdata = class4test_scaled)
+class4test_scaled <- cbind(class4test_scaled[, !names(class4test_scaled) %in% c('Winner', 
+                                                                    'title_bout', 'B_Stance', 'R_Stance')], dummy_data4)
+class4test_scaled <-  class4test_scaled[,!names(class4test_scaled) %in% c("WinnerBlue")]
 ```
 
-Since we plan to use elastic net that contain, we standardized the numerical predictors in our data. Elastic net also does not allow for multi-class categorical variables, so we need to transform the categorical variables (including our response variable) into numerical format so they can be used in Elastic Net. We can  do this by using dummy variables. We will not include a dummy variable indicating a Winner for the blue corner so our models are only in the context of Red winning or losing (1 = Red win, 0 = Red lose). Using a 70/30 training and test split, we can use cross validation for each alpha value to find the optimal lambda. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. We will find the combination that gives the best performance (e.g., the lowest deviance), fit the elastic net model using the optimal alpha and lambda values, and finally evaluate the model on test set to check its performance.
+Since we plan to use elastic net that contain, we standardized the numerical predictors in our data. In doing so, we first created our training and test splits. From there, we scaled each split using the mean and standard deviation of the training data so there would not be any information leakage into our test set as we need to consider it as establishing new data. Elastic net also does not allow for multi-class categorical variables, so we need to transform the categorical variables (including our response variable) into numerical format so they can be used in Elastic Net. We can  do this by using dummy variables. We will not include a dummy variable indicating a Winner for the blue corner so our models are only in the context of Red winning or losing (1 = Red win, 0 = Red lose). Using a 70/30 training and test split, we can use cross validation for each alpha value to find the optimal lambda. Alpha is the mixing parameter between Lasso (alpha = 1) and Ridge (alpha = 0) regression. We will find the combination that gives the best performance (e.g., the lowest deviance), fit the elastic net model using the optimal alpha and lambda values, and finally evaluate the model on test set to check its performance.
 
 Accuracy: proportion of the total number of predictions that were correct.
 Precision: ratio of correctly predicted positive observations to the total predicted positives.
@@ -827,43 +912,25 @@ F1-Score: weighted average of Precision and Recall.
 
 ```{r}
 # create test and train datasets
-set.seed(12)
-class1_scaled$id <- 1:nrow(class1_scaled)
-class1_train <- class1_scaled %>% dplyr::sample_frac(0.7)
-class1_test  <- dplyr::anti_join(class1_scaled, class1_train, by = 'id')
+train_x1 <- as.matrix(class1train_scaled[, !names(class1train_scaled) %in% 'WinnerRed'])
+train_y1 <- class1train_scaled$WinnerRed
+test_x1 <- as.matrix(class1test_scaled[, !names(class1test_scaled) %in% 'WinnerRed'])
+test_y1 <- class1test_scaled$WinnerRed
 
-class2_scaled$id <- 1:nrow(class2_scaled)
-class2_train <- class2_scaled %>% dplyr::sample_frac(0.7)
-class2_test  <- dplyr::anti_join(class2_scaled, class2_train, by = 'id')
+train_x2 <- as.matrix(class2train_scaled[, !names(class2train_scaled) %in% 'WinnerRed'])
+train_y2 <- class2train_scaled$WinnerRed
+test_x2 <- as.matrix(class2test_scaled[, !names(class2test_scaled) %in% 'WinnerRed'])
+test_y2 <- class2test_scaled$WinnerRed
 
-class3_scaled$id <- 1:nrow(class3_scaled)
-class3_train <- class3_scaled %>% dplyr::sample_frac(0.7)
-class3_test  <- dplyr::anti_join(class3_scaled, class3_train, by = 'id')
+train_x3 <- as.matrix(class3train_scaled[, !names(class3train_scaled) %in% 'WinnerRed'])
+train_y3 <- class3train_scaled$WinnerRed
+test_x3 <- as.matrix(class3test_scaled[, !names(class3test_scaled) %in% 'WinnerRed'])
+test_y3 <- class3test_scaled$WinnerRed
 
-class4_scaled$id <- 1:nrow(class4_scaled)
-class4_train <- class4_scaled %>% dplyr::sample_frac(0.7)
-class4_test  <- dplyr::anti_join(class4_scaled, class4_train, by = 'id')
-
-
-train_x1 <- as.matrix(class1_train[, !names(class1_train) %in% 'WinnerRed'])
-train_y1 <- class1_train$WinnerRed
-test_x1 <- as.matrix(class1_test[, !names(class1_test) %in% 'WinnerRed'])
-test_y1 <- class1_test$WinnerRed
-
-train_x2 <- as.matrix(class2_train[, !names(class2_train) %in% 'WinnerRed'])
-train_y2 <- class2_train$WinnerRed
-test_x2 <- as.matrix(class2_test[, !names(class2_test) %in% 'WinnerRed'])
-test_y2 <- class2_test$WinnerRed
-
-train_x3 <- as.matrix(class3_train[, !names(class3_train) %in% 'WinnerRed'])
-train_y3 <- class3_train$WinnerRed
-test_x3 <- as.matrix(class3_test[, !names(class3_test) %in% 'WinnerRed'])
-test_y3 <- class3_test$WinnerRed
-
-train_x4 <- as.matrix(class4_train[, !names(class4_train) %in% 'WinnerRed'])
-train_y4 <- class4_train$WinnerRed
-test_x4 <- as.matrix(class4_test[, !names(class4_test) %in% 'WinnerRed'])
-test_y4 <- class4_test$WinnerRed
+train_x4 <- as.matrix(class4train_scaled[, !names(class4train_scaled) %in% 'WinnerRed'])
+train_y4 <- class4train_scaled$WinnerRed
+test_x4 <- as.matrix(class4test_scaled[, !names(class4test_scaled) %in% 'WinnerRed'])
+test_y4 <- class4test_scaled$WinnerRed
 ```
 
 
@@ -886,30 +953,43 @@ best_alpha1 <- alpha_values[best_alpha_index1]
 best_lambda1 <- cv_results1[[best_alpha_index1]]$lambda.min
 
 final_model1 <- glmnet(train_x1, train_y1, alpha = best_alpha1, lambda = best_lambda1, family = "binomial")
-coef(final_model1)
 
-final_model1_base <- lm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_CLINCH_att + B_win_by_Decision_Majority + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_CLINCH_att + R_current_win_streak + B_age + R_age + B_StanceSwitch, family = "binomial", data = class1_train)
+final_model1_base <- glm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_CLINCH_att + B_win_by_Decision_Majority + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_CLINCH_att + R_win_by_KO.TKO + R_current_win_streak + B_age + R_age + B_StanceSwitch, family = "binomial", data = class1train_scaled)
 
-final_model1_interactions <- lm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_CLINCH_att + B_win_by_Decision_Majority + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + poly(R_avg_SIG_STR_landed, 2) + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_CLINCH_att + R_current_win_streak + B_age + R_age + B_StanceSwitch + R_avg_REV*R_avg_SIG_STR_landed + R_avg_BODY_landed*R_avg_SIG_STR_landed + R_avg_opp_TD_pct*R_avg_opp_SIG_STR_pct, family = "binomial", data = class1_train)
+final_model1_interactions <- glm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_CLINCH_att + B_win_by_Decision_Majority + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_CLINCH_att + R_current_win_streak + R_win_by_KO.TKO + B_age + R_age + B_StanceSwitch + R_avg_REV*R_avg_SIG_STR_landed + R_avg_BODY_landed*R_avg_SIG_STR_landed + R_avg_opp_TD_pct*R_avg_opp_SIG_STR_pct, family = "binomial", data = class1train_scaled)
 
-anova(final_model1_base, final_model1_interactions)
 
+#anova(final_model1_base, final_model1_interactions)
+
+#summary(final_model1_base)
 # R Reversals and sig strikes landed
 # R body and sig strikes landed
 # R opp Takedown and R opp Sig Strikes
 #Avg Sig Strikes landed ^ 2 
 ```
 
+
+For class 1 our optimal alpha value is 0.75, which results in the variable selection of 23 predictors. Given the high coefficient values we found earlier in our methodology, we attempted to include three interaction terms. In a new model with the selected variables, we added the interaction of the average amount of reversal strikes landed for the red fighter and the average amount of significant strikes landed by the red fighter, the interaction of the average amount of body strikes landed and the average amount of significant strikes landed by the Red Fighter, and the average amount of takedowns and the average amount of significant strikes previous opponents have landed on the Red fighter. Additionally, we also included a quadratic effect for the average amount of significant strikes landed under the assumption that as a fighter delivers more damage to their opponent the probability of winning would increase exponentially. However, we failed to reject the null hypothesis in favor for the base model when each if the added terms were included and the anova test was run. 
+
+```{r}
+#vif(final_model1_base)
+```
+
+Since our elastic net model for class 1 recieved a 0.75 alpha value, we hypothesized that some of our predictors were very multicollinear. However, in running a VIF test on our chosen predictors we did not spot any that would signify high correlation with each other which would justify either removing the predictor or testing further interactions. 
+
+
+
+
 ```{r}
 library(e1071)
-
-predictions1 <- predict(final_model1, newx = test_x1, type = "response", s = best_lambda1)
+predictions1 <- predict(final_model1, newx = test_x1, type = "response")
 predicted_classes1 <- ifelse(predictions1 > 0.5, 1, 0)
 conf_matrix1 <- confusionMatrix(as.factor(predicted_classes1), as.factor(test_y1))
 accuracy1 <- conf_matrix1$overall['Accuracy']
 precision1 <- conf_matrix1$byClass['Precision']
 recall1 <- conf_matrix1$byClass['Recall']
 F1_Score1 <- conf_matrix1$byClass['F1']
+
 
 Class1_stats <- data.frame(Values = c(accuracy1, precision1, recall1, F1_Score1))
 kable(Class1_stats, digits = 3, caption = "Class 1 Model Stats") %>% kable_styling(latex_options = "hold_position")
@@ -920,8 +1000,47 @@ model1_coef <- coef(final_model1, s = best_lambda1)
 model1_coef_df <- as.data.frame(as.matrix(model1_coef))
 highest_R1_win <- model1_coef_df %>% arrange(desc(s1)) %>% head(8)
 lowest_R1_win <- model1_coef_df %>% arrange(s1) %>% head(8)
-kable(list(highest_R1_win, lowest_R1_win), digits = 3, caption = "Most Important Predictors for Class 1 Red Fighter") %>% kable_styling(latex_options = "hold_position")
+#kable(list(highest_R1_win, lowest_R1_win), digits = 3, caption = "Most Important Predictors for Class 1 Red Fighter") %>% kable_styling(latex_options = "hold_position")
 ```
+
+
+
+```{r}
+final_model1_simplified <- lm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_win_by_Decision_Unanimous + R_avg_opp_SIG_STR_pct + R_avg_BODY_landed + R_avg_opp_CLINCH_att + R_current_win_streak + B_age + R_age + B_StanceSwitch, data = class1train_scaled, family = "binomial")
+
+predictions1_simple <- predict(final_model1_simplified, newdata = class1test_scaled, type = "response")
+predicted_classes1_simple <- ifelse(predictions1_simple > 0.5, 1, 0)
+conf_matrix1_simple <- confusionMatrix(as.factor(predicted_classes1_simple), as.factor(class1test_scaled$WinnerRed))
+accuracy1_simple <- conf_matrix1_simple$overall['Accuracy']
+precision1_simple <- conf_matrix1_simple$byClass['Precision']
+recall1_simple <- conf_matrix1_simple$byClass['Recall']
+F1_Score1_simple <- conf_matrix1_simple$byClass['F1']
+
+Class1_stats_simple <- data.frame(Values = c(accuracy1_simple, precision1_simple, recall1_simple, F1_Score1_simple))
+kable(Class1_stats_simple, digits = 3, caption = "Class 1 Model Stats Simple") %>% kable_styling(latex_options = "hold_position")
+
+```
+
+
+Since the use of interactions and the vif did not change our model, we decided to look at the statistically significant predictors and evaluate the model's performance with the subset of predictors. We discovered that our model performs marginally better with less predictors, and given that our goal is to maximize predictive accuracy while also being able to notify trainers the most important statistics to help improve their fighters, we will proceed with the condensed model shown below. 
+
+$$ log(P(Winner = Red)/1-P(Winner = Red)) = B_0 + B_1 * B\_avg\_opp\_SIG\_STR\_pct + $$
+$$B_2 * B\_win\_by\_Decision\_Unanimous + B_3 * R\_avg\_opp\_SIG\_STR\_pct + B_4 * R\_avg\_BODY\_landed +$$
+$$B_5 * R\_avg\_opp\_CLINCH\_att + B_6 * R\_current\_win\_streak +$$ 
+$$B_7 * B\_age + B_8 * R\_age + B_9 * B\_StanceSwitch$$
+
+
+
+
+```{r}
+roc.glmnet(final_model1_simplified, newy = class1test_scaled$WinnerRed)
+
+```
+
+
+
+
+
 
 
 
@@ -942,7 +1061,24 @@ best_lambda2 <- cv_results2[[best_alpha_index2]]$lambda.min
 
 final_model2 <- glmnet(train_x2, train_y2, alpha = best_alpha2, lambda = best_lambda2, family = "binomial")
 
-predictions2 <- predict(final_model2, newx = test_x2, type = "response", s = best_lambda2)
+
+coef(final_model2)
+
+final_model2_base <- lm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_SUB_ATT + B_avg_REV + B_avg_TD_att + B_avg_TD_landed + B_avg_CLINCH_landed + B_avg_CTRL_time.seconds. + B_total_time_fought.seconds. + B_total_title_bouts  + B_current_lose_streak + B_longest_win_streak + B_win_by_Submission + B_win_by_TKO_Doctor_Stoppage + R_avg_SIG_STR_pct + R_avg_SUB_ATT + R_avg_HEAD_landed + R_avg_opp_CLINCH_att + R_avg_GROUND_att + R_avg_opp_CTRL_time.seconds. + R_current_win_streak + R_longest_win_streak + R_win_by_Decision_Split + R_win_by_Decision_Unanimous + R_win_by_Submission + B_age + R_age + B_StanceOrthodox + B_StanceSouthpaw, data = class2train_scaled, family = "binomial")
+
+final_model2_interactions <- lm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_SUB_ATT + B_avg_REV + B_avg_TD_att + B_avg_TD_landed + B_avg_CLINCH_landed + B_avg_CTRL_time.seconds. + B_total_time_fought.seconds. + B_total_title_bouts  + B_current_lose_streak + B_longest_win_streak + B_win_by_Submission + B_win_by_TKO_Doctor_Stoppage + R_avg_SIG_STR_pct + R_avg_SUB_ATT + poly(R_avg_HEAD_landed,2) + R_avg_opp_CLINCH_att + R_avg_GROUND_att + R_avg_opp_CTRL_time.seconds. + R_current_win_streak + R_longest_win_streak + R_win_by_Decision_Split + R_win_by_Decision_Unanimous + R_win_by_Submission + B_age + R_age + B_StanceOrthodox + B_StanceSouthpaw, data = class2train_scaled, family = "binomial")
+
+
+
+anova(final_model2_base, final_model2_interactions)
+# B Avg Takedown attempts and B Avg Takedown landed
+# R avg sub attempts and r avg ground attempts
+# r avg head landed and r avg sig strike pct 
+# Enhanced R_avg_Head_landed to the 2nd power and it was significant!!!!
+
+predictions2 <- predict(final_model2_interactions, newdata = class2test_scaled, type = "response")
+#predictions2 <- predict(final_model2, newx = test_x2, type = "response", s = best_lambda2)
+
 predicted_classes2 <- ifelse(predictions2 > 0.5, 1, 0)
 ```
 
@@ -1019,10 +1155,10 @@ test explanation for class 3 models
 
 ### Class 4 Model
 
-```{r}
+```{r, eval = FALSE}
 set.seed(12)
 
-alpha_values <- seq(.5, .9, by = 0.05)
+alpha_values <- seq(.1, .9, by = 0.05)
 cv_results4 <- lapply(alpha_values, function(alpha) {
   cv.glmnet(train_x4, train_y4, alpha = alpha, family = "binomial", type.measure = "deviance")
 })
@@ -1038,7 +1174,7 @@ predictions4 <- predict(final_model4, newx = test_x4, type = "response", s = bes
 predicted_classes4 <- ifelse(predictions4 > 0.5, 1, 0)
 ```
 
-```{r}
+```{r, eval = FALSE}
 conf_matrix4 <- confusionMatrix(as.factor(predicted_classes4), as.factor(test_y4))
 accuracy4 <- conf_matrix4$overall['Accuracy']
 precision4 <- conf_matrix4$byClass['Precision']
@@ -1048,7 +1184,7 @@ Class4_stats <- data.frame(Values = c(accuracy4, precision4, recall4, F1_Score4)
 kable(Class4_stats, digits = 3, caption = "Class 4 Model Stats") %>% kable_styling(latex_options = "hold_position")
 ```
 
-```{r}
+```{r, eval = FALSE}
 model4_coef <- coef(final_model4, s = best_lambda4)
 model4_coef_df <- as.data.frame(as.matrix(model4_coef))
 highest_R4_win <- model4_coef_df %>% arrange(desc(s1)) %>% head(8)
@@ -1152,68 +1288,5 @@ win_by_Submission: the number of wins by submission in the fighter's ufc career
 win_by_TKO_Doctor_Stoppage: the number of wins by doctor stoppage in the fighter's ufc career
 
 
-### Full Models 
-
-```{r}
-model1_coef_df <- model1_coef_df %>% filter(s1 != 0)
-kable(model1_coef_df, caption = "Full Class 1 Standardized Coefficients", digits = 4)
-```
 
 
-```{r}
-full_model_1 <- lm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + B_avg_opp_REV+ B_avg_TD_att + B_avg_opp_TD_att + B_avg_opp_HEAD_landed + B_avg_opp_LEG_att + B_avg_CLINCH_att + B_losses + B_win_by_Decision_Majority + B_win_by_Decision_Split + B_win_by_Decision_Unanimous + B_win_by_Submission + R_avg_KD + R_avg_opp_SIG_STR_pct + R_avg_TD_pct + R_avg_opp_TD_pct + R_avg_opp_SUB_ATT + R_avg_REV + R_avg_SIG_STR_landed + R_avg_BODY_landed + R_avg_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_CLINCH_att + R_total_title_bouts + R_current_win_streak + R_losses + R_win_by_KO.TKO + R_Reach_cms + B_age + R_age + B_StanceSwitch, family = "binomial", data = class1_train)
-
-par(row = c(1, 1, 1, 1))
-plot(full_model_1)
-```
-
-
-
-
-
-```{r}
-model2_coef_df <- model2_coef_df %>% filter(s1 != 0)
-kable(model2_coef_df, caption = "Full Class 2 Standardized Coefficients", digits = 4)
-
-```
-
-```{r}
-model3_coef_df <- model3_coef_df %>% filter(s1 != 0)
-kable(model3_coef_df, caption = "Full Class 3 Standardized Coefficients", digits = 4)
-
-```
-
-```{r}
-model4_coef_df <- model4_coef_df %>% filter(s1 != 0)
-kable(model4_coef_df, caption = "Full Class 4 Standardized Coefficients", digits = 4)
-
-```
-
-```{r}
-model4 <- glm(WinnerRed ~ B_avg_opp_KD + B_avg_opp_SIG_STR_pct + B_avg_opp_TD_pct + B_avg_REV +
-              B_avg_opp_REV + B_losses + B_win_by_Decision_Majority + B_win_by_Submission + 
-                B_Reach_cms + R_avg_opp_LEG_att + R_avg_opp_LEG_landed + R_avg_opp_GROUND_att + R_avg_opp_GROUND_landed + R_win_by_Decision_Majority + R_win_by_TKO_Doctor_Stoppage + B_StanceOrthodox, data = class4_train, family = "binomial")
-
-
-
-full_logistic_model_4 <- glm(WinnerRed ~ ., data = class4_train, family = "binomial")
-
-
-full_predictions4 <- predict(full_logistic_model_4, newdata = class4_test, type = "response")
-full_predicted_classes4 <- ifelse(full_predictions4 > 0.5, 1, 0)
-```
-
-```{r}
-conf_matrix4 <- confusionMatrix(as.factor(full_predicted_classes4), as.factor(class4_test$WinnerRed))
-accuracy4 <- conf_matrix4$overall['Accuracy']
-precision4 <- conf_matrix4$byClass['Precision']
-recall4 <- conf_matrix4$byClass['Recall']
-F1_Score4 <- conf_matrix4$byClass['F1']
-accuracy4
-precision4
-recall4
-F1_Score4
-
-par(row = c(1, 1, 1, 1))
-plot(model4)
-```
