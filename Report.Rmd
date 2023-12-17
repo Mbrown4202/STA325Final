@@ -15,7 +15,6 @@ knitr::opts_chunk$set(echo = FALSE,
 ```
 
 ```{r}
-library(ggplot2)
 library(readr)
 library(dplyr)
 library(knitr)
@@ -40,20 +39,20 @@ data$B_Stance <- ifelse(data$B_Stance == "Open Stance", gsub(" ", "", data$B_Sta
 ```
 ## Introduction 
 
-The UFC began as a professional mixed martial arts organization in 1993 serving as an alternative hand-to-hand combat sport that combined traditional boxing with wrestling, karate, kickboxing, and jiu-jistu fighting techniques. The entity was acquired by a group led by Dana White in 2001, who has served as the President for over two decades. Since estabilshing control, Dana White has exponentially grown the reach of UFC's product while also creating more structure and sanction to the sport of MMA. UFC currently has over 60 global broadcasting partners and is able to be accessed in over 165 different countries. With a traveling, tour-like model, the UFC has been able to sell-out many arenas across the world as equally become a highly-touted event to attend similar to boxing matches with well-known participants involved. 
+The UFC began as a professional mixed martial arts organization in 1993 serving as an alternative hand-to-hand combat sport that combined traditional boxing with wrestling, karate, kickboxing, and jiu-jistu fighting techniques. The entity was acquired by a group led by Dana White in 2001, who has served as the President for over two decades. Since establishing control, Dana White has exponentially grown the reach of UFC's product while also creating more structure and sanction to the sport of MMA. UFC currently has over 60 global broadcasting partners and is able to be accessed in over 165 different countries. With a traveling, tour-like model, the UFC has been able to sell-out many arenas across the world as equally become a highly-touted event to attend similar to boxing matches with well-known participants involved. 
 
 In many other North-american based sports, organizations have invested and founded their own analytics departments. These departments are responsible for using data to acquire and develop the right talent that will lead to on-field success and improve the team's product. Since the UFC's participants are individual fighters that often follow their own training regiment, there is a smaller focus on analytics within the sport.   
 
 The purpose of our project is to create a model that maximizes predictive accuracy for the purposes of assisting sports bettors in finding potential opportunities for value not seen by the public. Dana White and the UFC have fully embraced the recent popularity of sports betting, forming sponsorships with companies such as bet365 in the UK, DraftKings in the US, as well as many others located worldwide. There is an established market for sports betting in the UFC, and we hope to create a model that provides an estimation of a winner between two fighters along with some form of uncertainty that allows a sports-better to determine if the predicted odds over or under-estimate a fighter's chance of winning compared to the sportsbook odds given to the public. 
 
-Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the frequency of different types of attacks they have faced from their previous opponents. We plan to fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our dataset are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The estimated probability values from the elastic net model can be compared against the moneyline odds to determine estimated value for sports bettors. 
+Our data is each UFC fight from 1994-2021, containing each fighter's names, physical information (age, height, weight), the amount of wins and losses in their UFC history, and various fighting data. The fighting data includes the average amount of attempted and landed attacks over their UFC career, as well as the frequency of different types of attacks they have faced from their previous opponents. We plan to fit an elastic net model that incorporates the standardization of a ridge regression model, and the variable selection of a lasso regression model, to determine which predictors in our data set are most influential. Our response variable will be the winner in each fight, with that value randomized dependent on the color of the corner assigned during the fight (red or blue). The estimated probability values from the elastic net model can be compared against the moneyline odds to determine estimated value for sports bettors. 
 
 
 ## Data Description and EDA
 
-The dataset used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. The dataset contains roughly 6,012 unique fights over a 27 year span, with each row containing data on fighters in the red and blue corner, a universal classification system used throughout all rows. Since a given fighter could be in the red corner for one fight and in the blue corner for another, we don't place any value in the classification. The historical data for a given strike is split into four different columns. There is a separate column for the average amount of attempt and the average amount of strikes landed for a fighter's prior fight. Additionally, for that given strike there includes identical metrics for the averages of their prior opponents. For example, if Conor McGregor had one prior fight in which his opponent attempted 20 strikes to Conor's head and connected on 8, the row for Conor's second fight would display avg_opp_HEAD_att equal to 20 and avg_opp_HEAD_landed to 8.
+The data set used for modeling was initially sourced from ufcstats.com, where the data was processed and published on kaggle.com. The data set contains 6,012 unique fights over a 27 year span, with each row containing data on fighters in the red and blue corner, a universal classification system used throughout all rows. Since a given fighter could be in the red corner for one fight and in the blue corner for another, we don't place any value in the classification. The historical data for a given strike is split into four different columns. There is a separate column for the average amount of attempt and the average amount of strikes landed for a fighter's prior fight. Additionally, for that given strike there includes identical metrics for the averages of their prior opponents. For example, if Conor McGregor had one prior fight in which his opponent attempted 20 strikes to Conor's head and connected on 8, the row for Conor's second fight would display avg_opp_HEAD_att equal to 20 and avg_opp_HEAD_landed to 8.
 
-In the UFC, fighters can win in a variety of different ways. If both fighters are still standing at the end of the fighter, the judges will issue a decision that is either unanimous, split, or a majority decision. The dataset includes the amount of victories by each form of decision, as well as by knockout or by the on-hand doctor stopping the fight. Our dataset also provides the current winning or losing streak for each fighter, which can be useful as it can reflect the momentum and confidence a fighter may possess. 
+In the UFC, fighters can win in a variety of different ways. If both fighters are still standing at the end of the fighter, the judges will issue a decision that is either unanimous, split, or a majority decision. The data set includes the amount of victories by each form of decision, as well as by knockout or by the on-hand doctor stopping the fight. Our data set also provides the current winning or losing streak for each fighter, which can be useful as it can reflect the momentum and confidence a fighter may possess. 
 
 ```{r}
 #data %>% group_by(weight_class) %>% summarise(count = n())
@@ -71,9 +70,9 @@ p1 + p2
 ```
 
 
-The plots above provide a better idea on the breakdown of the amount of male and female fights in UFC's history, as well as the results based on which corner was victorious. Similar to men's and women's lacrosse or men's and women's soccer, we believe that men's and women's UFC fights should be considered different sports given the difference in fighting style. Men's MMA is centered around  wrestling, while women's MMA is centered around jiu-jitsu and judo with a strong preference for striking than grappling seen more commonly on the men's side. Since roughly 92% of the data are men's UFC fights, we will remove the observations in which the two fighters are female. The right plot above reveals that about 2/3 of fights with a winner are assigned to the red corner. Since the corners are simply a classifier and we are conerned that our models will be biased towards the red corner, we will randomize the fighters within each fight and reassign their corresponding statistics if necessary. 
+The plots above provide a better idea on the breakdown of the amount of male and female fights in UFC's history, as well as the results based on which corner was victorious. Similar to men's and women's lacrosse or men's and women's soccer, we believe that men's and women's UFC fights should be considered different sports given the difference in fighting style. Men's MMA is centered around  wrestling, while women's MMA is centered around jiu-jitsu and judo with a strong preference for striking than grappling seen more commonly on the men's side. Since roughly 92% of the data are men's UFC fights, we will remove the observations in which the two fighters are female. The right plot above reveals that about 2/3 of fights with a winner are assigned to the red corner. Since the corners are simply a classifier and we are concerned that our models will be biased towards the red corner, we will randomize the fighters within each fight and reassign their corresponding statistics if necessary. 
 
-Another limitation within our data is that for a fighter's first career UFC fight, they have no historical data and thus their respective columns are N/A in our dataset. Since our modeling techniques require clean data without missing data, we will need to remove instances of a fighter's first fight.
+Another limitation within our data is that for a fighter's first career UFC fight, they have no historical data and thus their respective columns are N/A in our data set. Since our modeling techniques require clean data without missing data, we will need to remove instances of a fighter's first fight.
 
 ```{r}
 data <- data %>%
@@ -98,6 +97,7 @@ year_freq <- data %>% group_by(year) %>% summarize(count = n())
 #ggplot(data = year_freq, mapping = aes(x = year, y = count)) + geom_line() + labs(x = "Year", y = "Number of Fights", title = "Trend of Number of Fights in the UFC")
 
 ```
+ 
 
 ```{r}
 # Filtering for only men's fights and eliminating CatchWeight
@@ -504,7 +504,7 @@ ufc_data_shuffled <- ufc_data_shuffled %>%
 
 ```{r}
 #distribution of winner for each side
-#ggplot(data = ufc_data_shuffled, aes(x = Winner, fill = Winner)) + geom_bar() + scale_fill_manual(values = c("blue", "red")) + labs(title = "New Distribution of Blue & Red Winners", subtitle = "After Randomization of Classification")
+#ggplot(data = ufc_data_shuffled, aes(x = Winner, fill = Winner)) + geom_bar() + scale_fill_manual(values = c("blue", "red")) + labs(title = "New Distribution of Blue & Red Winners", subtitle = "After Randomization of Classification") + + theme(legend.position = "none")
 
 kable(table(ufc_data_shuffled$Winner), caption = "Frequency of Winner by Corner")
 
@@ -579,7 +579,7 @@ kable(Ratt_class, caption = "Avg Attempt of Different Style Attacks", digits = 1
 
 ### Variable Transformations
 
-Before constructing our four models, we first want to remove variables within our dataset that are either redundant or will not provide useful information in predicting a winner. We will remove many of the multi-class variables, such as the red and blue fighter's names and the referee's name, that would significantly increase the complexity of our models. We will also remove the amount of draws a previous fighter has in their career as all rows equate to zero for both the red and blue fighters. Elastic net model creation requires that the data is clean and does not contain missing values. Although we removed many of the initial missing values for when it was a fighter's UFC debut, there are other cases in our dataset in which a fighter's age or reach is not recorded. We considered imputing the data using averages, but ultimately decided to remove these rows alltogther to avoid potential biases that may arise from imputation. We also believed our sample size was large enough to construct our models. 
+Before constructing our four models, we first want to remove variables within our data set that are either redundant or will not provide useful information in predicting a winner. We will remove many of the multi-class variables, such as the red and blue fighter's names and the referee's name, that would significantly increase the complexity of our models. We will also remove the amount of draws a previous fighter has in their career as all rows equate to zero for both the red and blue fighters. Elastic net model creation requires that the data is clean and does not contain missing values. Although we removed many of the initial missing values for when it was a fighter's UFC debut, there are other cases in our data set in which a fighter's age or reach is not recorded. We considered imputing the data using averages, but ultimately decided to remove these rows altogether to avoid potential biases that may arise from imputation. We also believed our sample size was large enough to construct our models. 
 
 ```{r}
 # Removing Columns that will provide no meaning to our models
@@ -734,7 +734,7 @@ extract_high_corr <- function(corr_data_class4, threshold = 0.7) {
 #extract_high_corr(corr_data_class4, 0.7)
 ```
 
-In looking at the correlation coefficients between predictors for each class, we notice that coefficients for the same type of strike exceed 0.95 (such has avg strikes attempted and landed to the opponent's head). Correlation coefficients are also extremely high for significant strike predictors and other forms of strikes, such as head, body, and leg. Therefore, once we fit each of the models, we will also construct likelihood ratio tests to determine if the inclusion of interactions amongst the selected variables help improve the model. 
+In looking at the correlation coefficients between predictors for each class, we notice that coefficients for the same type of strike exceed 0.95 (such has avg strikes attempted and landed to the opponent's head). Correlation coefficients are also extremely high for significant strike predictors and other forms of strikes, such as head, body, and leg. Therefore, once we fit each of the models, we will also construct likelihood ratio tests to determine if the inclusion of interactions among the selected variables help improve the model. 
 
 
 
@@ -929,7 +929,7 @@ F1-Score: weighted average of Precision and Recall.
 
 
 ```{r}
-# create test and train datasets
+# create test and train data sets
 train_x1 <- as.matrix(class1train_scaled[, !names(class1train_scaled) %in% 'WinnerRed'])
 train_y1 <- class1train_scaled$WinnerRed
 test_x1 <- as.matrix(class1test_scaled[, !names(class1test_scaled) %in% 'WinnerRed'])
@@ -987,7 +987,7 @@ final_model1_interactions <- glm(WinnerRed ~ B_avg_KD + B_avg_opp_SIG_STR_pct + 
 ```
 
 
-For class 1 our optimal alpha value is 0.55, which results in the variable selection of 23 predictors. Given the high coefficient values we found earlier in our methodology, we attempted to include three interaction terms. In a new model with the selected variables, we added the interaction of the average amount of reversal strikes landed for the red fighter and the average amount of significant strikes landed by the red fighter, the interaction of the average amount of body strikes landed and the average amount of significant strikes landed by the Red Fighter, and the average amount of takedowns and the average amount of significant strikes previous opponents have landed on the Red fighter. Additionally, we also included a quadratic effect for the average amount of significant strikes landed under the assumption that as a fighter delivers more damage to their opponent the probability of winning would increase exponentially. However, we failed to reject the null hypothesis in favor for the base model when each if the added terms were included and the likelihood ratio test was run. Given our elastic net model for class 1 recieved a 0.55 alpha value, we hypothesized that some of our predictors would still be multicollinear since less of a ridge penalty was used. However, in running a VIF test on our chosen predictors we did not spot any that would signify high correlation with each other which would justify either removing the predictor or testing further interactions. 
+For class 1 our optimal alpha value is 0.55, which results in the variable selection of 23 predictors. Given the high coefficient values we found earlier in our methodology, we attempted to include three interaction terms. In a new model with the selected variables, we added the interaction of the average amount of reversal strikes landed for the red fighter and the average amount of significant strikes landed by the red fighter, the interaction of the average amount of body strikes landed and the average amount of significant strikes landed by the Red Fighter, and the average amount of take downs and the average amount of significant strikes previous opponents have landed on the Red fighter. Additionally, we also included a quadratic effect for the average amount of significant strikes landed under the assumption that as a fighter delivers more damage to their opponent the probability of winning would increase exponentially. However, we failed to reject the null hypothesis in favor for the base model when each of the added terms were included. Given our elastic net model for class 1 received a 0.55 alpha value, we hypothesized that some of our predictors would still be multicollinear since less of a ridge penalty was used. However, in running a VIF test on our chosen predictors we did not spot any that would signify high correlation with each other which would justify either removing the predictor or testing further interactions. 
 
 
 
@@ -1023,7 +1023,7 @@ $$B_2 * B\_win\_by\_Decision\_Unanimous + B_3 * R\_avg\_opp\_SIG\_STR\_pct + B_4
 $$B_5 * R\_avg\_opp\_CLINCH\_att + B_6 * R\_current\_win\_streak + $$ 
 $$B_7 * B\_age + B_8 * R\_age + B_9 * B\_StanceSwitch $$
 
-In summary, for the class 1 model we used elastic net to select 23 of the existing 140 variables. We then used likelihood ratio tests to determine that none of our hypothesized interactions or inclusion of quadratic effects were significant enough to add to the model. From there, we also concluded through a VIF test that none of the selected predictors contained high levels of multicollinearity that would justify the variable to be removed. Finally, we compared selecting the nine statistically significant predictors against the best subset selection and concluded that the nine statistically signficant predictors better predicted our testing data, choosing that model as our final selection. The roc curve and AUC value of 0.59 shown in the appendix signify that our model could be improved, but we will proceed to our other models to determine if the variability in UFC fight winners may place an upper bound in our model's performance. 
+In summary, for the class 1 model we used elastic net to select 23 of the existing 140 variables. We then used likelihood ratio tests to determine that none of our hypothesized interactions or inclusion of quadratic effects were significant enough to add to the model. From there, we also concluded through a VIF test that none of the selected predictors contained high levels of multicollinearity that would justify the variable to be removed. Finally, we compared selecting the nine statistically significant predictors against the best subset selection and concluded that the nine statistically significant predictors better predicted our testing data, choosing that model as our final selection. The roc curve and AUC value of 0.59 shown in the appendix signify that our model could be improved, but we will proceed to our other models to determine if the variability in UFC fight winners may place an upper bound in our model's performance. 
 
 ### Inference
 
@@ -1118,7 +1118,7 @@ kable(Class2_int_stats, digits = 3, caption = "Class 2 Elastic Net Model Accurac
 ```
 
 
-Above are the most positive and negative estimates towards a class 2 red fighter's log odds of victory. The most notable observation amongst the coefficients is the concave-down relationship between the average amount of red fighter's head strikes landed on their opponent. This means that holding all else constant and given our training data, the log odds the red figher wins decreases as the amount of head strikes landed reaches a large amount. This shows signs towards an added importance of submissions for this class, which can be supported by a positive coefficient for the average amount of submission attempts for a red fighter. One limitaiton within our model selection process is that we did not explore a higher degree than two for potential nonlinear effects, meaning that for R_avg_HEAD_landed the true relationship may not be quadratic. Nonetheless, the model provides an accuracy measure of 0.601 on our testing data which was the strongest of any model selection technique we explored for this class.
+Above are the most positive and negative estimates towards a class 2 red fighter's log odds of victory. The most notable observation among the coefficients is the concave-down relationship between the average amount of red fighter's head strikes landed on their opponent. This means that holding all else constant and given our training data, the log odds the red fighter wins decreases as the amount of head strikes landed reaches a large amount. This shows signs towards an added importance of submissions for this class, which can be supported by a positive coefficient for the average amount of submission attempts for a red fighter. One limitation within our model selection process is that we did not explore a higher degree than two for potential nonlinear effects, meaning that for R_avg_HEAD_landed the true relationship may not be quadratic. Nonetheless, the model provides an accuracy measure of 0.601 on our testing data which was the strongest of any model selection technique we explored for this class.
 
 
 ## Class 3 Model (Middleweight, LightHeavyweight)
@@ -1153,7 +1153,7 @@ final_model3_interactions <- glm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_T
 # R_Reach_cms*R_avg_SIG_STR_pct
 ```
 
-Our optimal alpha value of 0.85 resulted in the variable selection of 46 predictors. Using contextual knowledge, we again considered the inclusion of various interactions and discovered that the interaction of B_avg_GROUND_att and B_avg_CTRL_time.seconds., and R_avg_BODY_landed and R_avg_SIG_STR_pct improved our model through the likelihood ratio test. With these interactions included, we then took the 22 terms with a p-value less than 0.1 and compared the model accuracy measures. The full elastic net model provided better accuracy results, so we finally compared the model against the BIC backwards selection subsetted model as best subset was not computationally possible starting with a high number of predictors. While the BIC backwards selection model resulted in only six significant predictors, the full elastic net model was still more accurate on the test data. Given our biggest priority is predictive accuracy, the full elastic model is our final selection. 
+Our optimal alpha value of 0.85 resulted in the variable selection of 46 predictors. Using contextual knowledge, we again considered the inclusion of various interactions and discovered that the interaction of B_avg_GROUND_att and B_avg_CTRL_time.seconds., and R_avg_BODY_landed and R_avg_SIG_STR_pct improved our model through the likelihood ratio test. With these interactions included, we then took the 22 terms with a p-value less than 0.1 and compared the model accuracy measures. The full elastic net model provided better accuracy results, so we finally compared the model against the BIC backwards selection subset model as best subset was not computationally possible starting with a high number of predictors. While the BIC backwards selection model resulted in only six significant predictors, the full elastic net model was still more accurate on the test data. Given our biggest priority is predictive accuracy, the full elastic model is our final selection. 
 
 
 
@@ -1210,7 +1210,7 @@ kable(Class3_int_vif_stats, digits = 3, caption = "Class 3 Elastic Net Model Acc
 ```
 
 
-In evaluating the class 3 model coefficients, we noticed that younger red fighters have a greater chance of winning, and the log odds increase by 0.372 for every standard deviation increase in the blue fighter's height (cms), holding all else constant. We also spotted that takedown (TD) statistics are prevalent amongst the most important predictors, both positively and negatively. The average amount of takedowns landed increases the red fighter's chances, but so does the average amount of takedown attempts they have had to defend. Overall, with our 0.5 predicted probability threshold, our model predicted the test data correctly at a 56% rate. The biggest limitation within this model is that the amount of predictors suggests a possibility of overfitting, meaning there may be a simplier model we did not consider that would have greater predictive accuracy. 
+In evaluating the class 3 model coefficients, we noticed that younger red fighters have a greater chance of winning, and the log odds increase by 0.372 for every standard deviation increase in the blue fighter's height (cms), holding all else constant. We also spotted that take down (TD) statistics are prevalent among the most important predictors, both positively and negatively. The average amount of take downs landed increases the red fighter's chances, but so does the average amount of take down attempts they have had to defend. Overall, with our 0.5 predicted probability threshold, our model predicted the test data correctly at a 56% rate. The biggest limitation within this model is that the amount of predictors suggests a possibility of overfitting, meaning there may be a simpler model we did not consider that would have greater predictive accuracy. 
 
 
 
@@ -1270,7 +1270,7 @@ final_model4_interactions_vif <- glm(WinnerRed ~ B_avg_opp_KD + poly(B_avg_opp_S
 ### Inference
 
 
-For the class 4 model, there is not a noticable prevalence in the types of predictors. We spot that reach is important, as a standard deviation increase in the blue fighter's reach decreases the red fighter's log odds of winning by 0.671, holding all else constant. Additionally, sports bettors should be extremely aware of the blue fighter's stance, as Orthodox and Southpaw decrease red's predictive chances relative to a Switch stance. The accuracy measure is the strongest of the four classes of which we have fitted models, predicting the test data winner at a rate of 62%. One limitation in this model, however, is the presence of only 93 observations in our test data, which may inflate our predictive accuracy. We are interested to see how our prediction rate would chance as UFC hosts more fights for the Heavyweight and Openweight classes. 
+For the class 4 model, there is not a noticeable prevalence in the types of predictors. We spot that reach is important, as a standard deviation increase in the blue fighter's reach decreases the red fighter's log odds of winning by 0.671, holding all else constant. Additionally, sports bettors should be extremely aware of the blue fighter's stance, as Orthodox and Southpaw decrease red's predictive chances relative to a Switch stance. The accuracy measure is the strongest of the four classes of which we have fitted models, predicting the test data winner at a rate of 62%. One limitation in this model, however, is the presence of only 93 observations in our test data, which may inflate our predictive accuracy. We are interested to see how our prediction rate would chance as UFC hosts more fights for the Heavyweight and Openweight classes. 
 
 
 ```{r}
@@ -1298,7 +1298,7 @@ kable(Class4_int_vif_stats, digits = 3, caption = "Class 4 Elastic Net Model Acc
 
 ## Conclusion
 
-Despite recognizing there is room for improvement for the predictive accuracy for each of the classes, we are satisfied with the efficiency of our model selection processes. Sports bettors can research historical data of the fighters in an upcoming fight and based on the fight's weightclass, import the data into the appropriate model to receive a prediction probability for the red fighter to win. A sports bettor could consider using the red probability's complement to determine the blue fighter's probability of winning, but must be aware that the probability of a draw, although small, is included in that value. Assuming two fighters are evenly matched, sportsbooks typically place the "moneyline" of a fighter winning at -110, meaning a bettor is profitable if they bet correctly at least 55% of the time. Each of our models eclipse that rate, but  sportsbooks do not provide -110 lines for every single fight. Therefore, if we were to create our models again, we would create one model for all classes and focus our attention on cases in which the predictive probability was high for a losing fighter, and then try to identify a pattern for which "favorites" in our model were not chosen correctly. Additionally, we could compare our odds of prior fights to the sportsbook's implied odds based on the lines they set, allowing us to spot cases where significant differences are present.
+Despite recognizing there is room for improvement for the predictive accuracy for each of the classes, we are satisfied with the efficiency of our model selection processes. Sports bettors can research historical data of the fighters in an upcoming fight and based on the fight's weight class, import the data into the appropriate model to receive a prediction probability for the red fighter to win. A sports bettor could consider using the red probability's complement to determine the blue fighter's probability of winning, but must be aware that the probability of a draw, although small, is included in that value. Assuming two fighters are evenly matched, sportsbooks typically place the "moneyline" of a fighter winning at -110, meaning a bettor is profitable if they bet correctly at least 55% of the time. Each of our models eclipse that rate, but  sportsbooks do not provide -110 lines for every single fight. Therefore, if we were to create our models again, we would create one model for all classes and focus our attention on cases in which the predictive probability was high for a losing fighter, and then try to identify a pattern for which "favorites" in our model were not chosen correctly. Additionally, we could compare our odds of prior fights to the sportsbook's implied odds based on the lines they set, allowing us to spot cases where significant differences are present.
 
 ## Appendix 
 
@@ -1318,9 +1318,9 @@ location: Location of the fight
 
 Winner: The corner of the winning fighter. We will turn this into a dummy variable and will serve as our model's response variable
 
-title_bout: True/False indicator of a championship fight for a weightclass
+title_bout: True/False indicator of a championship fight for a weight class
 
-weight_class: Categorical variable indicating the division of the fight. There are nine male divisions and four female divisons. We will reassign the male divisons to create our models 
+weight_class: Categorical variable indicating the division of the fight. There are nine male divisions and four female divisions. We will reassign the male divisions to create our models 
 
 KD: the number of knockdowns
 
@@ -1330,9 +1330,9 @@ SIG_STR_pct: significant strikes percentage
 
 TOTAL_STR: total strikes 'landed of attempted'
 
-TD: number of takedowns
+TD: number of take downs
 
-TD_pct: takedown percentages
+TD_pct: take down percentages
 
 SUB_ATT: number of submission attempts
 
