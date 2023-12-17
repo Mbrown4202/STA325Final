@@ -1153,7 +1153,7 @@ final_model3_interactions <- glm(WinnerRed ~ B_avg_opp_SIG_STR_pct + B_avg_opp_T
 # R_Reach_cms*R_avg_SIG_STR_pct
 ```
 
-Our optimal alpha value of 0.85 resulted in the variable selection of 46 predictors. Using contextual knowledge, we again considered the inclusion of various interactions and discovered that the interaction of B_avg_GROUND_att and B_avg_CTRL_time.seconds., and R_avg_BODY_landed and R_avg_SIG_STR_pct improved our model through the likelihood ratio test. With these interactions included, we then took the 22 terms with a p-value less than 0.1 and compared the model accuracy measures. The full elastic net model provided better accuracy results, so we finally compared the model against the BIC backwards selection subset model as best subset was not computationally possible starting with a high number of predictors. While the BIC backwards selection model resulted in only six significant predictors, the full elastic net model was still more accurate on the test data. Given our biggest priority is predictive accuracy, the full elastic model is our final selection. 
+Our optimal alpha value of 0.85 resulted in the variable selection of 46 predictors. Using contextual knowledge, we again considered the inclusion of various interactions and discovered that the interaction of B_avg_GROUND_att and B_avg_CTRL_time.seconds., and R_avg_BODY_landed and R_avg_SIG_STR_pct improved our model through the likelihood ratio test. We decided to remove the R_wins value due to its VIF value of 10.95 which indicated concerning levels of correlation with the other remaining predictors. We then took the 22 terms with a p-value less than 0.1 and compared the model accuracy measures. The full elastic net model provided better accuracy results, so we finally compared the model against the BIC backwards selection subset model as best subset was not computationally possible starting with a high number of predictors. While the BIC backwards selection model resulted in only six significant predictors, the full elastic net model was still more accurate on the test data. Given our biggest priority is predictive accuracy, the full elastic model is our final selection. 
 
 
 
@@ -1167,20 +1167,20 @@ $$B_2 * B\_avg\_opp\_TD\_pct + B_3 * B\_avg\_REV + B_4 * B\_avg\_opp\_REV + B_5 
 
 $$B_6 * B\_avg\_opp\_TOTAL\_STR\_landed + B_7 * B\_avg\_TD\_att + B_8 * B\_avg\_opp\_TD\_att + $$
 $$B_9 * B\_avg\_LEG\_landed + B_{10} * B\_avg\_opp\_LEG\_att + B_{11} * B\_avg\_opp\_CLINCH\_landed + $$
-$$B_{12} * B\_avg\_GROUND\_att + B_{13} * B\_avg\_opp\_GROUND\_landed + B_{14} * B\_avg\_opp\_GROUND\_landed +$$
-$$B_{15} * B\_avg\_CTRL\_time.seconds. + B_{16} * B\_current\_win\_streak + $$
-$$B_{17} * B\_current\_lose\_streak + B_{18} * B\_longest\_win\_streak + B_{19} * B\_win\_by\_Decision\_Split +$$
-$$B_{20} * B\_win\_by\_Decision\_Unanimous + B_{21} * B\_win\_by\_TKO\_Doctor\_Stoppage + $$
-$$B_{22} * B\_Height\_cms + B_{23} * B\_Reach\_cms + B_{24} * B\_Weight\_lbs + B_{25} * R\_avg\_KD +$$
-$$B_{26} * R\_avg\_SIG\_STR\_pct + B_{27} * R\_avg\_opp\_TD\_pct + B_{28} * R\_avg\_opp\_SUB\_ATT + $$
-$$B_{29} * R\_avg\_REV + B_{30} * R\_avg\_opp\_TOTAL\_STR\_landed + B_{31} * R\_avg\_TD\_landed + $$ 
-$$B_{32} * R\_avg\_opp\_TD\_att + B_{33} * R\_avg\_opp\_HEAD\_att + B_{34} * R\_avg\_BODY\_landed + $$ 
-$$B_{35} * R\_avg\_opp\_LEG\_att + B_{36} * R\_longest\_win\_streak + B_{37} * R\_losses + $$ 
-$$B_{38} * R\_win\_by\_Decision\_Split + B_{39} * R\_win\_by\_KO.TKO + B_{40} * R\_Height\_cms +$$
-$$B_{41} * R\_Reach\_cms + B_{42} * R\_age + B_{43} * B\_StanceOpenStance  + $$ 
-$$B_{44} * B\_StanceOrthodox + B_{45} * R\_StanceSouthpaw +  B_{46} * R\_StanceSwitch + $$
-$$B_{47} * B\_avg\_GROUND\_att*B\_avg\_CTRL\_time.seconds. + $$
-$$B_{48} * R\_avg\_BODY\_landed*R\_avg\_SIG\_STR\_pct$$
+$$B_{12} * B\_avg\_GROUND\_att + B_{13} * B\_avg\_opp\_GROUND\_landed +$$
+$$B_{14} * B\_avg\_CTRL\_time.seconds. + B_{15} * B\_current\_win\_streak + $$
+$$B_{16} * B\_current\_lose\_streak + B_{17} * B\_longest\_win\_streak + B_{18} * B\_win\_by\_Decision\_Split +$$
+$$B_{19} * B\_win\_by\_Decision\_Unanimous + B_{20} * B\_win\_by\_TKO\_Doctor\_Stoppage + $$
+$$B_{21} * B\_Height\_cms + B_{22} * B\_Reach\_cms + B_{23} * B\_Weight\_lbs + B_{24} * R\_avg\_KD +$$
+$$B_{25} * R\_avg\_SIG\_STR\_pct + B_{26} * R\_avg\_opp\_TD\_pct + B_{27} * R\_avg\_opp\_SUB\_ATT + $$
+$$B_{28} * R\_avg\_REV + B_{29} * R\_avg\_opp\_TOTAL\_STR\_landed + B_{30} * R\_avg\_TD\_landed + $$ 
+$$B_{31} * R\_avg\_opp\_TD\_att + B_{32} * R\_avg\_opp\_HEAD\_att + B_{33} * R\_avg\_BODY\_landed + $$ 
+$$B_{34} * R\_avg\_opp\_LEG\_att + B_{35} * R\_longest\_win\_streak + B_{36} * R\_losses + $$ 
+$$B_{37} * R\_win\_by\_Decision\_Split + B_{38} * R\_win\_by\_KO.TKO + B_{39} * R\_Height\_cms +$$
+$$B_{40} * R\_Reach\_cms + B_{41} * R\_age + B_{42} * B\_StanceOpenStance  + $$ 
+$$B_{43} * B\_StanceOrthodox + B_{44} * R\_StanceSouthpaw +  B_{45} * R\_StanceSwitch + $$
+$$B_{46} * B\_avg\_GROUND\_att*B\_avg\_CTRL\_time.seconds. + $$
+$$B_{47} * R\_avg\_BODY\_landed*R\_avg\_SIG\_STR\_pct$$
 
 The model above provides an AUC value of 0.59, which is approximately similar to classes 1 and 2. It is becoming more conclusive that we are unable to reach a significantly high value due to the unpredictability of fight winners regardless of the classification threshold we set. 
 
@@ -1483,6 +1483,17 @@ Class2_stats_bss <- data.frame(Values = c(accuracy2_bss, precision2_bss, recall2
 
 kable(Class2_stats_bss, digits = 3, caption = "Class 2 Elastic Net --> Best Subset Model Accuracy") %>% kable_styling(latex_options = "hold_position")
 ```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
