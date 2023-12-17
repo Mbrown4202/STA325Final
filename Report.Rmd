@@ -3,6 +3,7 @@ title: "Predicting UFC Fight Results"
 output:
   pdf_document:
 date: "2023-12-11"
+author: "Max Brown and Jackson Seo"
 geometry: margin=2.48cm
 ---
 ```{r setup, include=FALSE}
@@ -63,8 +64,8 @@ data <- data %>%
   mutate(fight_gender = ifelse(weight_class %in% c("WomenBantamweight", "WomenFeatherweight", "WomenFlyweight",
                                              "WomenStrawweight"), "women", "men"))
 
-p1 <- ggplot(data = data, aes(x = fight_gender)) + geom_bar() + labs(title = "# of Fights by Gender")
-p2 <- ggplot(data = data, aes(x = Winner)) + geom_bar() + labs(title = "Frequency of Winner", subtitle = "By Corner Classification")
+p1 <- ggplot(data = data, aes(x = fight_gender, fill = fight_gender)) + geom_bar() + scale_fill_manual(values = c("lightblue", "pink")) + labs(title = "# of Fights by Gender") + theme(legend.position = "none")
+p2 <- ggplot(data = data, aes(x = Winner, fill = Winner)) + geom_bar() + labs(title = "Frequency of Winner", subtitle = "By Corner Classification") + scale_fill_manual(values = c("blue", "gray", "red")) + theme(legend.position = "none")
 
 p1 + p2
 ```
